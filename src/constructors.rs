@@ -80,4 +80,15 @@ impl Dimensional {
             units: Default::default(),
         }
     }
+
+    /// This many millimeters inverse.
+    pub fn mm_inverse(n: f64) -> Self {
+        Self {
+            n,
+            units: DimensionalUnits {
+                unit_distance: Some((DistanceUnit::Mm, -1)),
+                unit_angle: Default::default(),
+            },
+        }
+    }
 }

@@ -62,7 +62,7 @@ impl DimensionalUnits {
                 if a_count != b_count {
                     return Err(ConversionError::MixedDistance(a_count, b_count));
                 }
-                factor_for_distance(a_unit, b_unit)
+                factor_for_distance(a_unit, b_unit).powi(i32::from(b_count))
             }
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
@@ -73,13 +73,17 @@ impl DimensionalUnits {
                 if a_count != b_count {
                     return Err(ConversionError::MixedAngle(a_count, b_count));
                 }
-                factor_for_angle(a_unit, b_unit)
+                factor_for_angle(a_unit, b_unit).powi(i32::from(b_count))
             }
         };
 
         // Cannot add mixed units, e.g. cannot add 1cm to 1rad.
-        if let (Some(_), Some(_)) = (self.unit_distance, other.unit_angle) { return Err(ConversionError::MixingAngleAndDistance) };
-        if let (Some(_), Some(_)) = (other.unit_distance, self.unit_angle) { return Err(ConversionError::MixingAngleAndDistance) };
+        if let (Some(_), Some(_)) = (self.unit_distance, other.unit_angle) {
+            return Err(ConversionError::MixingAngleAndDistance);
+        };
+        if let (Some(_), Some(_)) = (other.unit_distance, self.unit_angle) {
+            return Err(ConversionError::MixingAngleAndDistance);
+        };
         Ok(distance_factor * angle_factor)
     }
 }
@@ -231,7 +235,7 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_distance(a_unit, b_unit);
+                conversion_factor *= factor_for_distance(a_unit, b_unit).powi(i32::from(b_count));
                 let sum = a_count + b_count;
                 if sum == 0 { None } else { Some((a_unit, sum)) }
             }
@@ -242,7 +246,7 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_angle(a_unit, b_unit);
+                conversion_factor *= factor_for_angle(a_unit, b_unit).powi(i32::from(b_count));
                 let sum = a_count + b_count;
                 if sum == 0 { None } else { Some((a_unit, sum)) }
             }
@@ -295,6 +299,7 @@ mod tests {
 
     #[test]
     fn squaring() {
+        // a * a should be a^2
         let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
         assert_eq!(a * a, a.pow(2));
     }
@@ -384,6 +389,11 @@ mod tests {
         println!("{x} + {y} == {}", x + y);
         assert_eq!(x + y, Dimensional::radians(0.0));
 
+        let x = Dimensional::mm(1.0) * Dimensional::mm(1.0);
+        let y = Dimensional::inches(1.0) * Dimensional::inches(1.0);
+        println!("{x} + {y} == {}", x + y);
+        assert_eq!(x + y, Dimensional::mm(646.16) * Dimensional::mm(1.0));
+
         println!("```");
 
         println!("\n\n## Incompatible additions\n");
@@ -447,14 +457,22 @@ mod tests {
         let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
         let b = Dimensional::mm(4.0);
         println!("{a} / {b} == {}", a / b);
+        assert_eq!(a / b, Dimensional::mm(0.5));
 
         let a = Dimensional::mm(2.0);
         let b = Dimensional::mm(4.0);
-        println!("{a}  / {b} == {}", a / b);
+        println!("{a} / {b} == {}", a / b);
+        assert_eq!(a / b, Dimensional::unitless(0.5));
 
         let q = Dimensional::unitless(2.0);
         let r = Dimensional::mm(4.0);
-        println!("{q}   / {r} == {}", q / r);
+        println!("{q} / {r} == {}", q / r);
+        assert_eq!(q / r, Dimensional::mm_inverse(0.5));
+
+        let a = Dimensional::mm(25.4);
+        let b = Dimensional::inches(1.0);
+        println!("{a} / {b} == {}", a / b);
+
         println!("```");
 
         println!("\n\n## Mixed units\n");
