@@ -2,7 +2,18 @@ use crate::{AngleUnit, Dimensional, DimensionalUnits, DistanceUnit};
 
 impl std::fmt::Display for Dimensional {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.n, self.units)
+        // Format the numeric part to a maximum of 3 decimal places.
+        // Don't show the fractional part if it's 0.
+        let n = format!("{:.3}", self.n);
+        let n = n.trim_end_matches('0');
+        let n = if n.ends_with('.') {
+            n.trim_matches('.').to_owned()
+        } else {
+            n.to_owned()
+        };
+        let unit_suffix = self.units;
+
+        write!(f, "{n}{unit_suffix}")
     }
 }
 

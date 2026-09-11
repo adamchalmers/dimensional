@@ -1,9 +1,12 @@
+
 # Dimensional analysis prototype
 
 Provides a type `Dimensional` which can track lengths (metric or imperial)
 and angles (degrees or radians), allowing you to do arithmetic with them.
 
-# Addition
+
+
+## Addition
 
 ```
 10mm + 2mm == 12mm
@@ -11,11 +14,11 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 10mm + 20mm == 30mm
 10mm + 1in == 35.4mm
 360deg + 40deg == 400deg
-360deg + 6.283185307179586rad == 720deg
+360deg + 6.283rad == 720deg
 ```
 
 
-# Incompatible additions
+## Incompatible additions
 
 ```
 10mm + 2rad == Err(MixingAngleAndDistance)
@@ -25,7 +28,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ```
 
 
-# Scaling a length
+## Scaling a length
 
 ```
 10mm * 2_ == 20mm
@@ -33,17 +36,17 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ```
 
 
-# Areas
+## Areas
 
 ```
 2mm * 3mm == 6mm²
 10mm * 1in == 254mm²
-1in * 50.8mm == 1.9999999999999998in²
-1deg * 6.283185307179586rad == 360deg²
+1in * 50.8mm == 2in²
+1deg * 6.283rad == 360deg²
 ```
 
 
-# Division removes dimensions
+## Division removes dimensions
 
 ```
 2mm² / 4mm == 0.5mm
@@ -52,9 +55,10 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ```
 
 
-# Mixed units
+## Mixed units
 
 ```
 2mm * 4deg == 8mm-deg
 2mm * 4deg / 2mm == 4deg
 ```
+

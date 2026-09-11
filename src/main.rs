@@ -3,9 +3,17 @@ use std::assert_matches;
 use dimensional::Dimensional;
 
 fn main() {
-    print!("\n\n# ");
-    println!("Addition\n");
+    println!(
+        "
+# Dimensional analysis prototype
 
+Provides a type `Dimensional` which can track lengths (metric or imperial)
+and angles (degrees or radians), allowing you to do arithmetic with them.
+"
+    );
+    println!("\n\n## Addition\n");
+
+    println!("```");
     let x = Dimensional::mm(10.0);
     let y = Dimensional::mm(2.0);
     println!("{x} + {y} == {}", x + y);
@@ -35,10 +43,11 @@ fn main() {
     let y = Dimensional::radians(2.0 * std::f64::consts::PI);
     println!("{x} + {y} == {}", x + y);
     assert_eq!(x + y, Dimensional::degrees(720.0));
+    println!("```");
 
-    print!("\n\n# ");
-    println!("Incompatible additions\n");
+    println!("\n\n## Incompatible additions\n");
 
+    println!("```");
     let x = Dimensional::mm(10.0);
     let y = Dimensional::radians(2.0);
     println!("{x} + {y} == {:?}", x.checked_add(y));
@@ -55,17 +64,20 @@ fn main() {
     let y = Dimensional::degrees(10.0) * Dimensional::degrees(1.0);
     println!("{x} + {y} == {:?}", x.checked_add(y));
     assert_matches!(x.checked_add(y), Err(_));
+    println!("```");
 
-    print!("\n\n# ");
-    println!("Scaling a length\n");
+    println!("\n\n## Scaling a length\n");
+    println!("```");
     let x = Dimensional::mm(10.0);
     let y = Dimensional::unitless(2.0);
     println!("{x} * {y} == {}", x * y);
     let x = Dimensional::mm(10.0);
     let y = Dimensional::unitless(2.0);
     println!("{x} / {y} == {}", x / y);
-    print!("\n\n# ");
-    println!("Areas\n");
+    println!("```");
+
+    println!("\n\n## Areas\n");
+    println!("```");
     let a = Dimensional::mm(2.0);
     let b = Dimensional::mm(3.0);
     println!("{a} * {b} == {}", a * b);
@@ -77,9 +89,10 @@ fn main() {
     let one = Dimensional::degrees(1.0);
     let full_circle = Dimensional::radians(2.0 * std::f64::consts::PI);
     println!("{one} * {full_circle} == {}", one * full_circle);
+    println!("```");
 
-    print!("\n\n# ");
-    println!("Division removes dimensions\n");
+    println!("\n\n## Division removes dimensions\n");
+    println!("```");
     let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
     let b = Dimensional::mm(4.0);
     println!("{a} / {b} == {}", a / b);
@@ -91,11 +104,13 @@ fn main() {
     let q = Dimensional::unitless(2.0);
     let r = Dimensional::mm(4.0);
     println!("{q}   / {r} == {}", q / r);
+    println!("```");
 
-    print!("\n\n# ");
-    println!("Mixed units\n");
+    println!("\n\n## Mixed units\n");
+    println!("```");
     let a = Dimensional::mm(2.0);
     let b = Dimensional::degrees(4.0);
     println!("{a} * {b} == {}", a * b);
     println!("{a} * {b} / {a} == {}", a * b / a);
+    println!("```");
 }
