@@ -15,6 +15,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 1ft == 12in
 6.283rad == 360deg
 1mm != 10deg
+1mm != 1_
 ```
 
 
@@ -34,8 +35,8 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ## Incompatible additions
 
 ```
-10mm + 2rad == Err(MixingAngleAndDistance)
-2rad + 10mm == Err(MixingAngleAndDistance)
+10mm + 2rad == Err(MixedDistance(1, 0))
+2rad + 10mm == Err(MixedDistance(1, 0))
 100mm + 10000mm² == Err(MixedDistance(1, 2))
 10deg + 10deg² == Err(MixedAngle(1, 2))
 ```
@@ -74,5 +75,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ```
 2mm * 4deg == 8mm-deg
 2mm * 4deg / 2mm == 4deg
+2mm * 4deg + 2mm * 4deg == 16mm-deg
+2mm * 4deg * 2_ == 16mm-deg
 ```
 

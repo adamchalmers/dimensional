@@ -20,8 +20,6 @@ pub struct DimensionalUnits {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ConversionError {
-    MixingUnitlessAndDimensional,
-    MixingAngleAndDistance,
     MixedDistance(i16, i16),
     MixedAngle(i16, i16),
 }
@@ -50,23 +48,16 @@ fn factor_for_angle(a_unit: AngleUnit, b_unit: AngleUnit) -> f64 {
 }
 
 impl DimensionalUnits {
-    fn is_unitless(&self) -> bool {
-        self.unit_distance.is_none() && self.unit_angle.is_none()
-    }
-
     /// If the units are comensurable, returns a conversion factor to convert
     /// `other` into the units of `self`.
     /// e.g. cm and inches are convertible, with a factor of 25.4
     /// If they're not comensurable (e.g. cm and radians)
     fn conversion_for(&self, other: DimensionalUnits) -> Result<f64, ConversionError> {
-        if self.is_unitless() != other.is_unitless() {
-            return Err(ConversionError::MixingUnitlessAndDimensional);
-        }
-
+        // Missing dimensions have exponent zero and must match the other operand.
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
-            (None, Some(_)) => 1.0,
-            (Some(_), None) => 1.0,
+            (None, Some((_, count))) => return Err(ConversionError::MixedDistance(0, count)),
+            (Some((_, count)), None) => return Err(ConversionError::MixedDistance(count, 0)),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
                 if a_count != b_count {
                     return Err(ConversionError::MixedDistance(a_count, b_count));
@@ -76,8 +67,8 @@ impl DimensionalUnits {
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
             (None, None) => 1.0,
-            (None, Some(_)) => 1.0,
-            (Some(_), None) => 1.0,
+            (None, Some((_, count))) => return Err(ConversionError::MixedAngle(0, count)),
+            (Some((_, count)), None) => return Err(ConversionError::MixedAngle(count, 0)),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
                 if a_count != b_count {
                     return Err(ConversionError::MixedAngle(a_count, b_count));
@@ -86,13 +77,6 @@ impl DimensionalUnits {
             }
         };
 
-        // Cannot add mixed units, e.g. cannot add 1cm to 1rad.
-        if let (Some(_), Some(_)) = (self.unit_distance, other.unit_angle) {
-            return Err(ConversionError::MixingAngleAndDistance);
-        };
-        if let (Some(_), Some(_)) = (other.unit_distance, self.unit_angle) {
-            return Err(ConversionError::MixingAngleAndDistance);
-        };
         Ok(distance_factor * angle_factor)
     }
 }
@@ -285,14 +269,8 @@ mod tests {
         let b = Dimensional::mm(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(
-            a.checked_add(b),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
-        assert_eq!(
-            b.checked_add(a),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
     }
 
     #[test]
@@ -301,14 +279,8 @@ mod tests {
         let b = Dimensional::degrees(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(
-            a.checked_add(b),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
-        assert_eq!(
-            b.checked_add(a),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(0, 1)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedAngle(1, 0)));
     }
 
     #[test]
@@ -317,14 +289,8 @@ mod tests {
         let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(
-            a.checked_add(b),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
-        assert_eq!(
-            b.checked_add(a),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
     }
 
     #[test]
@@ -333,14 +299,8 @@ mod tests {
         let b = Dimensional::mm(0.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(
-            a.checked_add(b),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
-        assert_eq!(
-            b.checked_add(a),
-            Err(ConversionError::MixingUnitlessAndDimensional)
-        );
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
     }
 
     #[test]
@@ -365,7 +325,7 @@ mod tests {
 
         // Assign some placeholder values to the variables.
         let outer_radius = Dimensional::cm(20.0);
-        let top_radius = Dimensional::cm(20.0);
+        let top_radius = Dimensional::cm(30.0);
         let delta_z = Dimensional::cm(3.9);
 
         // Check the math works.
@@ -377,8 +337,47 @@ mod tests {
     #[test]
     fn addition_of_mixed() {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
-        let _c1 = a * Dimensional::unitless(2.0);
-        // let _c2 = a + a;
+        assert_eq!(a + a, a * Dimensional::unitless(2.0));
+        assert_eq!(a - a, Dimensional::mm(0.0) * Dimensional::degrees(1.0));
+    }
+
+    #[test]
+    fn addition_of_mixed_converts_both_units() {
+        let a = Dimensional::mm(25.4) * Dimensional::degrees(180.0);
+        let b = Dimensional::inches(1.0) * Dimensional::radians(PI);
+        let sum = a + b;
+        assert_eq!(sum.units, a.units);
+        assert!((sum.n - 9144.0).abs() < 1e-9);
+
+        let a = Dimensional::mm(25.4) * Dimensional::degrees(1.0);
+        let b = Dimensional::inches(1.0) * Dimensional::degrees(1.0);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn compound_units_require_both_dimensions() {
+        let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
+        let b = Dimensional::mm(1.0);
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 0)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedAngle(0, 1)));
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+
+        let b = Dimensional::degrees(1.0);
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 0)));
+        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(0, 1)));
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+    }
+
+    #[test]
+    fn compound_units_require_matching_exponents() {
+        let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
+        let b = Dimensional::mm(1.0).pow(2) * Dimensional::degrees(1.0);
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 2)));
+
+        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).pow(2);
+        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 2)));
     }
 
     #[test]
