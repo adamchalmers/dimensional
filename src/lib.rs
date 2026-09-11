@@ -78,14 +78,8 @@ impl DimensionalUnits {
         };
 
         // Cannot add mixed units, e.g. cannot add 1cm to 1rad.
-        match (self.unit_distance, other.unit_angle) {
-            (Some(_), Some(_)) => return Err(ConversionError::MixingAngleAndDistance),
-            _ => {}
-        };
-        match (other.unit_distance, self.unit_angle) {
-            (Some(_), Some(_)) => return Err(ConversionError::MixingAngleAndDistance),
-            _ => {}
-        };
+        if let (Some(_), Some(_)) = (self.unit_distance, other.unit_angle) { return Err(ConversionError::MixingAngleAndDistance) };
+        if let (Some(_), Some(_)) = (other.unit_distance, self.unit_angle) { return Err(ConversionError::MixingAngleAndDistance) };
         Ok(distance_factor * angle_factor)
     }
 }
@@ -101,7 +95,7 @@ impl PartialEq for Dimensional {
         // Find the LHS's units.
         let lhs_units = Self {
             n: 0.0,
-            units: self.units.clone(),
+            units: self.units,
         };
 
         // Convert RHS to LHS's units, return `false` if that's not possible.
