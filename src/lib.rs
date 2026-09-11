@@ -25,6 +25,11 @@ pub enum ConversionError {
     MixedAngle(i16, i16),
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum ArithmeticError {
+    CannotSqrtPower(i16),
+}
+
 fn factor_for_distance(a_unit: DistanceUnit, b_unit: DistanceUnit) -> f64 {
     match (a_unit, b_unit) {
         (DistanceUnit::Mm, DistanceUnit::Mm) => 1.0,
@@ -87,6 +92,12 @@ impl DimensionalUnits {
 
 impl PartialEq for Dimensional {
     fn eq(&self, rhs: &Self) -> bool {
+        // If the units match, we can just compare the numeric part.
+        if self.units == rhs.units {
+            return self.n == rhs.n;
+        }
+
+        // If we need to convert units:
         // Find the LHS's units.
         let lhs_units = Self {
             n: 0.0,
@@ -126,6 +137,43 @@ impl Dimensional {
         let conversion_factor = self.units.conversion_for(rhs.units)?;
         self.n += rhs.n * conversion_factor;
         Ok(self)
+    }
+
+    pub fn pow(self, exponent: u16) -> Self {
+        if exponent == 0 {
+            return Self::unitless(1.0);
+        }
+        let mut product = self;
+        for _ in 0..(exponent - 1) {
+            product = product * self;
+        }
+        product
+    }
+
+    pub fn sqrt(self) -> Result<Self, ArithmeticError> {
+        fn checked_half(x: i16) -> Result<i16, ArithmeticError> {
+            if x % 2 == 0 {
+                Ok(x / 2)
+            } else {
+                Err(ArithmeticError::CannotSqrtPower(x))
+            }
+        }
+        let units = DimensionalUnits {
+            unit_distance: if let Some((unit, count)) = self.units.unit_distance {
+                Some((unit, checked_half(count)?))
+            } else {
+                None
+            },
+            unit_angle: if let Some((unit, count)) = self.units.unit_angle {
+                Some((unit, checked_half(count)?))
+            } else {
+                None
+            },
+        };
+        Ok(Self {
+            n: self.n.sqrt(),
+            units,
+        })
     }
 }
 
@@ -249,6 +297,18 @@ mod tests {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
         let _c1 = a * Dimensional::unitless(2.0);
         // let _c2 = a + a;
+    }
+
+    #[test]
+    fn squaring() {
+        let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
+        assert_eq!(a * a, a.pow(2));
+    }
+
+    #[test]
+    fn sqrt_is_inverse_of_square() {
+        let a = Dimensional::degrees(30.0);
+        assert_eq!(a, a.pow(2).sqrt().unwrap());
     }
 
     #[test]
