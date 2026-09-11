@@ -6,6 +6,18 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 
 
 
+## Equality
+
+1mm == 1mm
+1cm == 10mm
+1cm² == 100mm²
+25.4mm == 1in
+1ft == 12in
+6.283rad == 360deg
+1mm != 10deg
+```
+
+
 ## Addition
 
 ```
@@ -15,6 +27,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 10mm + 1in == 35.4mm
 360deg + 40deg == 400deg
 360deg + 6.283rad == 720deg
+0rad + 0deg == 0rad
 ```
 
 
@@ -44,7 +57,6 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 1in * 50.8mm == 2in²
 1deg * 6.283rad == 360deg²
 2mm² + 3mm² == 5mm²
-1cm² == 100mm²
 ```
 
 

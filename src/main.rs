@@ -3,6 +3,8 @@ use std::assert_matches;
 use dimensional::Dimensional;
 
 fn main() {
+    use std::f64::consts::PI;
+
     println!(
         "
 # Dimensional analysis prototype
@@ -11,6 +13,44 @@ Provides a type `Dimensional` which can track lengths (metric or imperial)
 and angles (degrees or radians), allowing you to do arithmetic with them.
 "
     );
+    println!("\n\n## Equality\n");
+    let a = Dimensional::mm(1.0);
+    let b = Dimensional::mm(1.0);
+    assert_eq!(a, b);
+    println!("{a} == {b}");
+
+    let a = Dimensional::cm(1.0);
+    let b = Dimensional::mm(10.0);
+    assert_eq!(a, b);
+    println!("1cm == {b}");
+
+    let a = Dimensional::cm2(1.0);
+    let b = Dimensional::mm(100.0) * Dimensional::mm(1.0);
+    assert_eq!(a, b);
+    println!("1cm² == {b}");
+
+    let a = Dimensional::mm(25.4);
+    let b = Dimensional::inches(1.0);
+    assert_eq!(a, b);
+    println!("{a} == {b}");
+
+    let a = Dimensional::feet(1.0);
+    let b = Dimensional::inches(12.0);
+    assert_eq!(a, b);
+    println!("1ft == {b}");
+
+    let a = Dimensional::radians(2.0 * PI);
+    let b = Dimensional::degrees(360.0);
+    assert_eq!(a, b);
+    println!("{a} == {b}");
+
+    let a = Dimensional::mm(1.0);
+    let b = Dimensional::degrees(10.0);
+    assert_ne!(a, b);
+    println!("{a} != {b}");
+
+    println!("```");
+
     println!("\n\n## Addition\n");
 
     println!("```");
@@ -41,9 +81,14 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     assert_eq!(x + y, Dimensional::degrees(400.0));
 
     let x = Dimensional::degrees(360.0);
-    let y = Dimensional::radians(2.0 * std::f64::consts::PI);
+    let y = Dimensional::radians(2.0 * PI);
     println!("{x} + {y} == {}", x + y);
     assert_eq!(x + y, Dimensional::degrees(720.0));
+
+    let x = Dimensional::radians(0.0);
+    let y = Dimensional::degrees(0.0);
+    println!("{x} + {y} == {}", x + y);
+    assert_eq!(x + y, Dimensional::radians(0.0));
 
     println!("```");
 
@@ -94,15 +139,11 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let two_inches = Dimensional::mm(25.4 * 2.0);
     println!("{y} * {two_inches} == {}", y * two_inches);
     let one = Dimensional::degrees(1.0);
-    let full_circle = Dimensional::radians(2.0 * std::f64::consts::PI);
+    let full_circle = Dimensional::radians(2.0 * PI);
     println!("{one} * {full_circle} == {}", one * full_circle);
     let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
     let b = Dimensional::mm(3.0) * Dimensional::mm(1.0);
     println!("{a} + {b} == {}", a + b);
-    let a = Dimensional::cm2(1.0);
-    let b = Dimensional::mm(100.0) * Dimensional::mm(1.0);
-    assert_eq!(a, b);
-    println!("1cm² == {b}");
 
     println!("```");
 
