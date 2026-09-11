@@ -20,6 +20,7 @@ pub struct DimensionalUnits {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ConversionError {
+    MixingUnitlessAndDimensional,
     MixingAngleAndDistance,
     MixedDistance(i16, i16),
     MixedAngle(i16, i16),
@@ -49,11 +50,19 @@ fn factor_for_angle(a_unit: AngleUnit, b_unit: AngleUnit) -> f64 {
 }
 
 impl DimensionalUnits {
+    fn is_unitless(&self) -> bool {
+        self.unit_distance.is_none() && self.unit_angle.is_none()
+    }
+
     /// If the units are comensurable, returns a conversion factor to convert
     /// `other` into the units of `self`.
     /// e.g. cm and inches are convertible, with a factor of 25.4
     /// If they're not comensurable (e.g. cm and radians)
     fn conversion_for(&self, other: DimensionalUnits) -> Result<f64, ConversionError> {
+        if self.is_unitless() != other.is_unitless() {
+            return Err(ConversionError::MixingUnitlessAndDimensional);
+        }
+
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
             (None, Some(_)) => 1.0,
@@ -271,6 +280,81 @@ mod tests {
     use super::*;
 
     #[test]
+    fn unitless_and_distance_are_incompatible() {
+        let a = Dimensional::unitless(1.0);
+        let b = Dimensional::mm(1.0);
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+    }
+
+    #[test]
+    fn unitless_and_angle_are_incompatible() {
+        let a = Dimensional::unitless(1.0);
+        let b = Dimensional::degrees(1.0);
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+    }
+
+    #[test]
+    fn unitless_and_compound_units_are_incompatible() {
+        let a = Dimensional::unitless(1.0);
+        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+    }
+
+    #[test]
+    fn zero_does_not_make_units_compatible() {
+        let a = Dimensional::unitless(0.0);
+        let b = Dimensional::mm(0.0);
+        assert_ne!(a, b);
+        assert_ne!(b, a);
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixingUnitlessAndDimensional)
+        );
+    }
+
+    #[test]
+    fn unitless_addition_and_scaling() {
+        let a = Dimensional::unitless(2.0);
+        let b = Dimensional::mm(10.0);
+        assert_eq!(a + a, Dimensional::unitless(4.0));
+        assert_eq!(a * b, Dimensional::mm(20.0));
+        assert_eq!(b * a, Dimensional::mm(20.0));
+        assert_eq!(b / a, Dimensional::mm(5.0));
+        assert_eq!(a / b, Dimensional::mm_inverse(0.2));
+    }
+
+    #[test]
     fn jordans_motivating_example() {
         // From this KCL:
         // centerX = (
@@ -345,6 +429,11 @@ mod tests {
 
         let a = Dimensional::mm(1.0);
         let b = Dimensional::degrees(10.0);
+        assert_ne!(a, b);
+        println!("{a} != {b}");
+
+        let a = Dimensional::mm(1.0);
+        let b = Dimensional::unitless(1.0);
         assert_ne!(a, b);
         println!("{a} != {b}");
 

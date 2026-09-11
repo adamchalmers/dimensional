@@ -49,6 +49,11 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     assert_ne!(a, b);
     println!("{a} != {b}");
 
+    let a = Dimensional::mm(1.0);
+    let b = Dimensional::unitless(1.0);
+    assert_ne!(a, b);
+    println!("{a} != {b}");
+
     println!("```");
 
     println!("\n\n## Addition\n");
