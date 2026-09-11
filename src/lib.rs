@@ -25,6 +25,24 @@ pub enum ConversionError {
     MixedAngle(i16, i16),
 }
 
+fn factor_for_distance(a_unit: DistanceUnit, b_unit: DistanceUnit) -> f64 {
+    match (a_unit, b_unit) {
+        (DistanceUnit::Mm, DistanceUnit::Mm) => 1.0,
+        (DistanceUnit::Mm, DistanceUnit::Inch) => MM_PER_INCH,
+        (DistanceUnit::Inch, DistanceUnit::Mm) => INCH_PER_MM,
+        (DistanceUnit::Inch, DistanceUnit::Inch) => 1.0,
+    }
+}
+
+fn factor_for_angle(a_unit: AngleUnit, b_unit: AngleUnit) -> f64 {
+    match (a_unit, b_unit) {
+        (AngleUnit::Deg, AngleUnit::Deg) => 1.0,
+        (AngleUnit::Deg, AngleUnit::Rad) => (1.0f64).to_degrees(),
+        (AngleUnit::Rad, AngleUnit::Deg) => (1.0f64).to_radians(),
+        (AngleUnit::Rad, AngleUnit::Rad) => 1.0,
+    }
+}
+
 impl DimensionalUnits {
     /// If the units are comensurable, returns a conversion factor to convert
     /// `other` into the units of `self`.
@@ -39,12 +57,7 @@ impl DimensionalUnits {
                 if a_count != b_count {
                     return Err(ConversionError::MixedDistance(a_count, b_count));
                 }
-                match (a_unit, b_unit) {
-                    (DistanceUnit::Mm, DistanceUnit::Mm) => 1.0,
-                    (DistanceUnit::Mm, DistanceUnit::Inch) => MM_PER_INCH,
-                    (DistanceUnit::Inch, DistanceUnit::Mm) => INCH_PER_MM,
-                    (DistanceUnit::Inch, DistanceUnit::Inch) => 1.0,
-                }
+                factor_for_distance(a_unit, b_unit)
             }
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
@@ -55,14 +68,11 @@ impl DimensionalUnits {
                 if a_count != b_count {
                     return Err(ConversionError::MixedAngle(a_count, b_count));
                 }
-                match (a_unit, b_unit) {
-                    (AngleUnit::Deg, AngleUnit::Deg) => 1.0,
-                    (AngleUnit::Deg, AngleUnit::Rad) => (1.0f64).to_degrees(),
-                    (AngleUnit::Rad, AngleUnit::Deg) => (1.0f64).to_radians(),
-                    (AngleUnit::Rad, AngleUnit::Rad) => 1.0,
-                }
+                factor_for_angle(a_unit, b_unit)
             }
         };
+
+        // Cannot add mixed units, e.g. cannot add 1cm to 1rad.
         match (self.unit_distance, other.unit_angle) {
             (Some(_), Some(_)) => return Err(ConversionError::MixingAngleAndDistance),
             _ => {}
@@ -179,12 +189,7 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= match (a_unit, b_unit) {
-                    (DistanceUnit::Mm, DistanceUnit::Mm) => 1.0,
-                    (DistanceUnit::Mm, DistanceUnit::Inch) => MM_PER_INCH,
-                    (DistanceUnit::Inch, DistanceUnit::Mm) => INCH_PER_MM,
-                    (DistanceUnit::Inch, DistanceUnit::Inch) => 1.0,
-                };
+                conversion_factor *= factor_for_distance(a_unit, b_unit);
                 let sum = a_count + b_count;
                 if sum == 0 { None } else { Some((a_unit, sum)) }
             }
@@ -195,12 +200,7 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= match (a_unit, b_unit) {
-                    (AngleUnit::Deg, AngleUnit::Deg) => 1.0,
-                    (AngleUnit::Deg, AngleUnit::Rad) => (1.0f64).to_degrees(),
-                    (AngleUnit::Rad, AngleUnit::Deg) => (1.0f64).to_radians(),
-                    (AngleUnit::Rad, AngleUnit::Rad) => 1.0,
-                };
+                conversion_factor *= factor_for_angle(a_unit, b_unit);
                 let sum = a_count + b_count;
                 if sum == 0 { None } else { Some((a_unit, sum)) }
             }
@@ -242,6 +242,13 @@ mod tests {
         let center_x = (outer_radius * outer_radius - top_radius * top_radius + delta_z * delta_z)
             / (Dimensional::cm(2.0) * (outer_radius - top_radius));
         println!("{center_x}");
+    }
+
+    #[test]
+    fn addition_of_mixed() {
+        let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
+        let _c1 = a * Dimensional::unitless(2.0);
+        // let _c2 = a + a;
     }
 
     #[test]
