@@ -188,6 +188,7 @@ Here are some examples of supported operations.
     let double_ab1 = a * b * Dimensional::unitless(2.0);
     println!("{a} * {b} * 2_ == {}", double_ab1);
     assert_eq!(double_ab0, double_ab1);
+    println!("```");
 
     println!("\n\n## Exponentiation\n");
     println!("```");
