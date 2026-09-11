@@ -8,6 +8,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 
 ## Equality
 
+```
 1mm == 1mm
 1cm == 10mm
 1cm² == 100mm²

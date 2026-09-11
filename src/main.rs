@@ -14,6 +14,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 "
     );
     println!("\n\n## Equality\n");
+    println!("```");
     let a = Dimensional::mm(1.0);
     let b = Dimensional::mm(1.0);
     assert_eq!(a, b);
