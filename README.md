@@ -23,7 +23,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 ```
 10mm + 2rad == Err(MixingAngleAndDistance)
 2rad + 10mm == Err(MixingAngleAndDistance)
-100mm + 100mm² == Err(MixedDistance(1, 2))
+100mm + 10000mm² == Err(MixedDistance(1, 2))
 10deg + 10deg² == Err(MixedAngle(1, 2))
 ```
 
@@ -43,6 +43,8 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 10mm * 1in == 254mm²
 1in * 50.8mm == 2in²
 1deg * 6.283rad == 360deg²
+2mm² + 3mm² == 5mm²
+1cm² == 100mm²
 ```
 
 

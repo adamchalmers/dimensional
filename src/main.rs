@@ -14,6 +14,7 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     println!("\n\n## Addition\n");
 
     println!("```");
+
     let x = Dimensional::mm(10.0);
     let y = Dimensional::mm(2.0);
     println!("{x} + {y} == {}", x + y);
@@ -43,11 +44,13 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let y = Dimensional::radians(2.0 * std::f64::consts::PI);
     println!("{x} + {y} == {}", x + y);
     assert_eq!(x + y, Dimensional::degrees(720.0));
+
     println!("```");
 
     println!("\n\n## Incompatible additions\n");
 
     println!("```");
+
     let x = Dimensional::mm(10.0);
     let y = Dimensional::radians(2.0);
     println!("{x} + {y} == {:?}", x.checked_add(y));
@@ -64,20 +67,24 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let y = Dimensional::degrees(10.0) * Dimensional::degrees(1.0);
     println!("{x} + {y} == {:?}", x.checked_add(y));
     assert_matches!(x.checked_add(y), Err(_));
+
     println!("```");
 
     println!("\n\n## Scaling a length\n");
     println!("```");
+
     let x = Dimensional::mm(10.0);
     let y = Dimensional::unitless(2.0);
     println!("{x} * {y} == {}", x * y);
     let x = Dimensional::mm(10.0);
     let y = Dimensional::unitless(2.0);
     println!("{x} / {y} == {}", x / y);
+
     println!("```");
 
     println!("\n\n## Areas\n");
     println!("```");
+
     let a = Dimensional::mm(2.0);
     let b = Dimensional::mm(3.0);
     println!("{a} * {b} == {}", a * b);
@@ -89,10 +96,19 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let one = Dimensional::degrees(1.0);
     let full_circle = Dimensional::radians(2.0 * std::f64::consts::PI);
     println!("{one} * {full_circle} == {}", one * full_circle);
+    let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
+    let b = Dimensional::mm(3.0) * Dimensional::mm(1.0);
+    println!("{a} + {b} == {}", a + b);
+    let a = Dimensional::cm2(1.0);
+    let b = Dimensional::mm(100.0) * Dimensional::mm(1.0);
+    assert_eq!(a, b);
+    println!("1cm² == {b}");
+
     println!("```");
 
     println!("\n\n## Division removes dimensions\n");
     println!("```");
+
     let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
     let b = Dimensional::mm(4.0);
     println!("{a} / {b} == {}", a / b);
@@ -112,5 +128,6 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let b = Dimensional::degrees(4.0);
     println!("{a} * {b} == {}", a * b);
     println!("{a} * {b} / {a} == {}", a * b / a);
+
     println!("```");
 }
