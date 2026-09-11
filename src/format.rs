@@ -1,4 +1,4 @@
-use crate::{AngleUnit, Dimensional, DimensionalUnits, DistanceUnit};
+use crate::{AngleUnit, ArithmeticError, Dimensional, DimensionalUnits, DistanceUnit};
 
 impl std::fmt::Display for Dimensional {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -80,4 +80,15 @@ fn superscript(n: i16) -> String {
         .map(|c| DIGITS[c.to_digit(10).unwrap() as usize])
         .collect();
     if neg { format!("⁻{out}") } else { out }
+}
+
+impl std::fmt::Display for ArithmeticError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ArithmeticError::DimensionalityMustBeInteger(base, divisor) => write!(
+                f,
+                "Error: Cannot divide the dimensionality {base} by {divisor} because dimensionality must be an integer. For example, you cannot take the square root of a volume, because we cannot represent cm^1.5, only cm, cm^2 and cm^3."
+            ),
+        }
+    }
 }

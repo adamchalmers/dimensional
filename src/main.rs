@@ -11,6 +11,14 @@ fn main() {
 
 Provides a type `Dimensional` which can track lengths (metric or imperial)
 and angles (degrees or radians), allowing you to do arithmetic with them.
+
+It supports these units:
+
+ - Length: mm, inches, and anything multiples of them (cm, m, feet)
+ - Angle: radians, degrees
+ - Unitless: Abstract quantities with no units, e.g. `2_`
+
+Here are some examples of supported operations.
 "
     );
     println!("\n\n## Equality\n");
@@ -180,6 +188,17 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
     let double_ab1 = a * b * Dimensional::unitless(2.0);
     println!("{a} * {b} * 2_ == {}", double_ab1);
     assert_eq!(double_ab0, double_ab1);
+
+    println!("\n\n## Exponentiation\n");
+    println!("```");
+    let a = Dimensional::mm(2.0);
+    println!("{a} * {a} == {}", a * a);
+    println!("{a}.pow(2) == {}", a.pow(2));
+    assert_eq!(a.pow(2), a * a);
+    let b = Dimensional::mm(4.0) * Dimensional::mm(1.0);
+    println!("{b}.sqrt() == {}", b.sqrt().unwrap());
+    let c = Dimensional::mm(4.0) * Dimensional::mm(1.0) * Dimensional::mm(1.0);
+    println!("{}.sqrt() == {}", c, c.sqrt().unwrap_err());
 
     println!("```");
 }

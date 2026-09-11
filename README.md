@@ -4,6 +4,14 @@
 Provides a type `Dimensional` which can track lengths (metric or imperial)
 and angles (degrees or radians), allowing you to do arithmetic with them.
 
+It supports these units:
+
+ - Length: mm, inches, and anything multiples of them (cm, m, feet)
+ - Angle: radians, degrees
+ - Unitless: Abstract quantities with no units, e.g. `2_`
+
+Here are some examples of supported operations.
+
 
 
 ## Equality
@@ -78,5 +86,14 @@ and angles (degrees or radians), allowing you to do arithmetic with them.
 2mm * 4deg / 2mm == 4deg
 2mm * 4deg + 2mm * 4deg == 16mm-deg
 2mm * 4deg * 2_ == 16mm-deg
+
+
+## Exponentiation
+
+```
+2mm * 2mm == 4mm²
+2mm.pow(2) == 4mm²
+4mm².sqrt() == 2mm
+4mm³.sqrt() == Error: Cannot divide the dimensionality 3 by 2 because dimensionality must be an integer. For example, you cannot take the square root of a volume, because we cannot represent cm^1.5, only cm, cm^2 and cm^3.
 ```
 

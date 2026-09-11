@@ -26,7 +26,7 @@ pub enum ConversionError {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ArithmeticError {
-    CannotSqrtPower(i16),
+    DimensionalityMustBeInteger(i16, i16),
 }
 
 fn factor_for_distance(a_unit: DistanceUnit, b_unit: DistanceUnit) -> f64 {
@@ -146,7 +146,7 @@ impl Dimensional {
             if x % 2 == 0 {
                 Ok(x / 2)
             } else {
-                Err(ArithmeticError::CannotSqrtPower(x))
+                Err(ArithmeticError::DimensionalityMustBeInteger(x, 2))
             }
         }
         let units = DimensionalUnits {
