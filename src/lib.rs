@@ -4,7 +4,7 @@ const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
 /// Implementing `Display` for pretty formatting.
 mod format;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dimensional {
     n: f64,
     units: DimensionalUnits,
@@ -28,6 +28,17 @@ impl Dimensional {
             n: n * 10.0,
             units: DimensionalUnits {
                 unit_distance: Some((DistanceUnit::Mm, 1)),
+                unit_angle: Default::default(),
+            },
+        }
+    }
+
+    // This many square centimeters.
+    pub fn cm2(n: f64) -> Self {
+        Self {
+            n: n * 10.0,
+            units: DimensionalUnits {
+                unit_distance: Some((DistanceUnit::Mm, 2)),
                 unit_angle: Default::default(),
             },
         }
@@ -92,6 +103,63 @@ pub struct DimensionalUnits {
     unit_angle: Option<(AngleUnit, i16)>,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum ConversionError {
+    MixingAngleAndDistance,
+    MixedDistance(i16, i16),
+    MixedAngle(i16, i16),
+}
+
+impl DimensionalUnits {
+    /// If the units are comensurable, returns a conversion factor to convert
+    /// `other` into the units of `self`.
+    /// e.g. cm and inches are convertible, with a factor of 25.4
+    /// If they're not comensurable (e.g. cm and radians)
+    fn conversion_for(&self, other: DimensionalUnits) -> Result<f64, ConversionError> {
+        let distance_factor = match (self.unit_distance, other.unit_distance) {
+            (None, None) => 1.0,
+            (None, Some(_)) => 1.0,
+            (Some(_), None) => 1.0,
+            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+                if a_count != b_count {
+                    return Err(ConversionError::MixedDistance(a_count, b_count));
+                }
+                match (a_unit, b_unit) {
+                    (DistanceUnit::Mm, DistanceUnit::Mm) => 1.0,
+                    (DistanceUnit::Mm, DistanceUnit::Inch) => MM_PER_INCH,
+                    (DistanceUnit::Inch, DistanceUnit::Mm) => INCH_PER_MM,
+                    (DistanceUnit::Inch, DistanceUnit::Inch) => 1.0,
+                }
+            }
+        };
+        let angle_factor = match (self.unit_angle, other.unit_angle) {
+            (None, None) => 1.0,
+            (None, Some(_)) => 1.0,
+            (Some(_), None) => 1.0,
+            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+                if a_count != b_count {
+                    return Err(ConversionError::MixedAngle(a_count, b_count));
+                }
+                match (a_unit, b_unit) {
+                    (AngleUnit::Deg, AngleUnit::Deg) => 1.0,
+                    (AngleUnit::Deg, AngleUnit::Rad) => (1.0f64).to_degrees(),
+                    (AngleUnit::Rad, AngleUnit::Deg) => (1.0f64).to_radians(),
+                    (AngleUnit::Rad, AngleUnit::Rad) => 1.0,
+                }
+            }
+        };
+        match (self.unit_distance, other.unit_angle) {
+            (Some(_), Some(_)) => return Err(ConversionError::MixingAngleAndDistance),
+            _ => {}
+        };
+        match (other.unit_distance, self.unit_angle) {
+            (Some(_), Some(_)) => return Err(ConversionError::MixingAngleAndDistance),
+            _ => {}
+        };
+        Ok(distance_factor * angle_factor)
+    }
+}
+
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
 pub enum DistanceUnit {
     /// Millimeters
@@ -108,26 +176,39 @@ pub enum AngleUnit {
     Rad,
 }
 
-impl std::ops::Add for Dimensional {
-    type Output = Self;
-
-    fn add(mut self, rhs: Self) -> Self::Output {
+impl Dimensional {
+    pub fn checked_add(mut self, rhs: Self) -> Result<Self, ConversionError> {
         // TODO: Addition should be fallible, but it's very convenient to use the + operator here,
         // so idk. Obviously in the production system we can't panic on this, the function
         // will have to either return Result, or track an Error unit type.
-        if self.units != rhs.units {
-            panic!("Cannot add mixed units");
-        }
-        self.n += rhs.n;
+        let conversion_factor = self.units.conversion_for(rhs.units)?;
+        self.n += rhs.n * conversion_factor;
+        Ok(self)
+    }
+}
+
+impl std::ops::Add for Dimensional {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self.checked_add(rhs).unwrap()
+    }
+}
+
+impl std::ops::Neg for Dimensional {
+    type Output = Self;
+
+    fn neg(mut self) -> Self::Output {
+        self.n *= -1.0;
         self
     }
 }
+
 impl std::ops::Sub for Dimensional {
     type Output = Self;
 
-    fn sub(self, mut rhs: Self) -> Self::Output {
-        rhs.n *= -1.0;
-        self + rhs
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + (-rhs)
     }
 }
 
@@ -199,57 +280,8 @@ impl std::ops::Mul for Dimensional {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
-
-    #[test]
-    fn demo() {
-        println!("\n\n=============");
-        println!("Scaling a length");
-        println!("=============");
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} * {y} == {}", x * y);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} / {y} == {}", x / y);
-        println!("\n\n=============");
-        println!("Areas");
-        println!("=============");
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(3.0);
-        println!("{a} * {b} == {}", a * b);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::inches(1.0);
-        println!("{x} * {y} == {}", x * y);
-        let two_inches = Dimensional::mm(25.4 * 2.0);
-        println!("{y} * {two_inches} == {}", y * two_inches);
-        let one = Dimensional::degrees(1.0);
-        let full_circle = Dimensional::radians(2.0 * std::f64::consts::PI);
-        println!("{one} * {full_circle} == {}", one * full_circle);
-
-        println!("\n\n=============");
-        println!("Division removes dimensions");
-        println!("=============");
-        let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a} / {b} == {}", a / b);
-
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a}  / {b} == {}", a / b);
-
-        let q = Dimensional::unitless(2.0);
-        let r = Dimensional::mm(4.0);
-        println!("{q}   / {r} == {}", q / r);
-
-        println!("\n\n=============");
-        println!("Mixed units");
-        println!("=============");
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::degrees(4.0);
-        println!("{a} * {b} == {}", a * b);
-        println!("{a} * {b} / {a} == {}", a * b / a);
-    }
 
     #[test]
     fn jordans_motivating_example() {
