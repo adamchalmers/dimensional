@@ -86,7 +86,7 @@ Here are some examples of supported operations.
 2mm * 4deg / 2mm == 4deg
 2mm * 4deg + 2mm * 4deg == 16mm-deg
 2mm * 4deg * 2_ == 16mm-deg
-
+```
 
 ## Exponentiation
 
