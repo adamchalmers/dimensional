@@ -68,7 +68,7 @@ impl std::fmt::Display for AngleUnit {
 
 /// Formats the number in unicode string superscript style.
 /// e.g. 20 becomes "²⁰".
-fn superscript(n: i16) -> String {
+fn superscript(n: i8) -> String {
     const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 
     let neg = n < 0;

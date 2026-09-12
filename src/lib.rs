@@ -14,19 +14,19 @@ pub struct Dimensional {
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct DimensionalUnits {
-    unit_distance: Option<(DistanceUnit, i16)>,
-    unit_angle: Option<(AngleUnit, i16)>,
+    unit_distance: Option<(DistanceUnit, i8)>,
+    unit_angle: Option<(AngleUnit, i8)>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ConversionError {
-    MixedDistance(i16, i16),
-    MixedAngle(i16, i16),
+    MixedDistance(i8, i8),
+    MixedAngle(i8, i8),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ArithmeticError {
-    DimensionalityMustBeInteger(i16, i16),
+    DimensionalityMustBeInteger(i8, i8),
 }
 
 fn factor_for_distance(a_unit: DistanceUnit, b_unit: DistanceUnit) -> f64 {
@@ -142,7 +142,7 @@ impl Dimensional {
     }
 
     pub fn sqrt(self) -> Result<Self, ArithmeticError> {
-        fn checked_half(x: i16) -> Result<i16, ArithmeticError> {
+        fn checked_half(x: i8) -> Result<i8, ArithmeticError> {
             if x % 2 == 0 {
                 Ok(x / 2)
             } else {
