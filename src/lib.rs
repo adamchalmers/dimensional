@@ -7,19 +7,43 @@ mod constructors;
 /// Implementing `Display` for pretty formatting.
 mod format;
 
+#[cfg(test)]
+mod property_tests;
+#[cfg(test)]
+mod tests;
+
 /// Convenient alias.
 pub type Num = Dimensional;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Dimensional {
     n: f64,
     units: DimensionalUnits,
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+impl std::fmt::Debug for Dimensional {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} {}>", self.n, self.units)
+    }
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionalUnits {
     unit_distance: Option<(DistanceUnit, i8)>,
     unit_angle: Option<(AngleUnit, i8)>,
+}
+
+impl std::fmt::Debug for DimensionalUnits {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match (self.unit_distance, self.unit_angle) {
+            (Some(dist), Some(ang)) => write!(f, "{dist:?}-{ang:?}"),
+            (Some(dist), None) => write!(f, "{dist:?}"),
+            (None, Some(ang)) => write!(f, "{ang:?}"),
+            (None, None) => write!(f, "_"),
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -112,6 +136,7 @@ impl PartialEq for Dimensional {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum DistanceUnit {
     /// Millimeters
     Mm,
@@ -120,6 +145,7 @@ pub enum DistanceUnit {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum AngleUnit {
     /// Degrees
     Deg,
@@ -134,7 +160,7 @@ impl Dimensional {
         Ok(self)
     }
 
-    pub fn pow(self, exponent: u16) -> Self {
+    pub fn powi(self, exponent: u16) -> Self {
         if exponent == 0 {
             return Self::unitless(1.0);
         }
@@ -169,6 +195,14 @@ impl Dimensional {
             n: self.n.sqrt(),
             units,
         })
+    }
+
+    /// If sign is negative, make the sign positive.
+    pub fn abs(self) -> Self {
+        Self {
+            n: self.n.abs(),
+            units: self.units,
+        }
     }
 }
 
@@ -260,9 +294,8 @@ impl std::ops::Mul for Dimensional {
 }
 
 #[cfg(test)]
-mod tests {
+mod unit_tests {
 
-    use std::assert_matches;
     use std::f64::consts::PI;
 
     use super::*;
@@ -377,10 +410,10 @@ mod tests {
     #[test]
     fn compound_units_require_matching_exponents() {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
-        let b = Dimensional::mm(1.0).pow(2) * Dimensional::degrees(1.0);
+        let b = Dimensional::mm(1.0).powi(2) * Dimensional::degrees(1.0);
         assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 2)));
 
-        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).pow(2);
+        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).powi(2);
         assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 2)));
     }
 
@@ -388,192 +421,12 @@ mod tests {
     fn squaring() {
         // a * a should be a^2
         let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
-        assert_eq!(a * a, a.pow(2));
+        assert_eq!(a * a, a.powi(2));
     }
 
     #[test]
     fn sqrt_is_inverse_of_square() {
         let a = Dimensional::degrees(30.0);
-        assert_eq!(a, a.pow(2).sqrt().unwrap());
-    }
-
-    #[test]
-    fn test_main() {
-        println!("\n\n## Equality\n");
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::mm(1.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::cm(1.0);
-        let b = Dimensional::mm(10.0);
-        assert_eq!(a, b);
-        println!("1cm == {b}");
-
-        let a = Dimensional::cm2(1.0);
-        let b = Dimensional::mm(100.0) * Dimensional::mm(1.0);
-        assert_eq!(a, b);
-        println!("1cm² == {b}");
-
-        let a = Dimensional::mm(25.4);
-        let b = Dimensional::inches(1.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::feet(1.0);
-        let b = Dimensional::inches(12.0);
-        assert_eq!(a, b);
-        println!("1ft == {b}");
-
-        let a = Dimensional::radians(2.0 * PI);
-        let b = Dimensional::degrees(360.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::degrees(10.0);
-        assert_ne!(a, b);
-        println!("{a} != {b}");
-
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::unitless(1.0);
-        assert_ne!(a, b);
-        println!("{a} != {b}");
-
-        println!("```");
-
-        println!("\n\n## Addition\n");
-
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::mm(2.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(12.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::mm(2.0);
-        println!("{x} - {y} == {}", x - y);
-        assert_eq!(x - y, Dimensional::mm(8.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::cm(2.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(30.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::inches(1.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(35.4));
-
-        let x = Dimensional::degrees(360.0);
-        let y = Dimensional::degrees(40.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::degrees(400.0));
-
-        let x = Dimensional::degrees(360.0);
-        let y = Dimensional::radians(2.0 * PI);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::degrees(720.0));
-
-        let x = Dimensional::radians(0.0);
-        let y = Dimensional::degrees(0.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::radians(0.0));
-
-        let x = Dimensional::mm(1.0) * Dimensional::mm(1.0);
-        let y = Dimensional::inches(1.0) * Dimensional::inches(1.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(646.16) * Dimensional::mm(1.0));
-
-        println!("```");
-
-        println!("\n\n## Incompatible additions\n");
-
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::radians(2.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-        println!("{y} + {x} == {:?}", x.checked_add(y));
-        assert_matches!(y.checked_add(x), Err(_));
-
-        let x = Dimensional::cm(10.0);
-        let y = Dimensional::cm2(10.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-
-        let x = Dimensional::degrees(10.0);
-        let y = Dimensional::degrees(10.0) * Dimensional::degrees(1.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-
-        println!("```");
-
-        println!("\n\n## Scaling a length\n");
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} * {y} == {}", x * y);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} / {y} == {}", x / y);
-
-        println!("```");
-
-        println!("\n\n## Areas\n");
-        println!("```");
-
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(3.0);
-        println!("{a} * {b} == {}", a * b);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::inches(1.0);
-        println!("{x} * {y} == {}", x * y);
-        let two_inches = Dimensional::mm(25.4 * 2.0);
-        println!("{y} * {two_inches} == {}", y * two_inches);
-        let one = Dimensional::degrees(1.0);
-        let full_circle = Dimensional::radians(2.0 * PI);
-        println!("{one} * {full_circle} == {}", one * full_circle);
-        let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
-        let b = Dimensional::mm(3.0) * Dimensional::mm(1.0);
-        println!("{a} + {b} == {}", a + b);
-
-        println!("```");
-
-        println!("\n\n## Division removes dimensions\n");
-        println!("```");
-
-        let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a} / {b} == {}", a / b);
-        assert_eq!(a / b, Dimensional::mm(0.5));
-
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a} / {b} == {}", a / b);
-        assert_eq!(a / b, Dimensional::unitless(0.5));
-
-        let q = Dimensional::unitless(2.0);
-        let r = Dimensional::mm(4.0);
-        println!("{q} / {r} == {}", q / r);
-        assert_eq!(q / r, Dimensional::mm_inverse(0.5));
-
-        let a = Dimensional::mm(25.4);
-        let b = Dimensional::inches(1.0);
-        println!("{a} / {b} == {}", a / b);
-
-        println!("```");
-
-        println!("\n\n## Mixed units\n");
-        println!("```");
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::degrees(4.0);
-        println!("{a} * {b} == {}", a * b);
-        println!("{a} * {b} / {a} == {}", a * b / a);
-
-        println!("```");
+        assert_eq!(a, a.powi(2).sqrt().unwrap());
     }
 }

@@ -194,8 +194,8 @@ Here are some examples of supported operations.
     println!("```");
     let a = Dimensional::mm(2.0);
     println!("{a} * {a} == {}", a * a);
-    println!("{a}.pow(2) == {}", a.pow(2));
-    assert_eq!(a.pow(2), a * a);
+    println!("{a}.pow(2) == {}", a.powi(2));
+    assert_eq!(a.powi(2), a * a);
     let b = Dimensional::mm(4.0) * Dimensional::mm(1.0);
     println!("{b}.sqrt() == {}", b.sqrt().unwrap());
     let c = Dimensional::mm(4.0) * Dimensional::mm(1.0) * Dimensional::mm(1.0);

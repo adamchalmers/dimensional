@@ -15,7 +15,12 @@ impl Dimensional {
 
     /// This many square millimeters.
     pub fn mm2(n: f64) -> Self {
-        Self::mm(n) * Self::mm(n)
+        Self::mm(n) * Self::mm(1.0)
+    }
+
+    /// This many cubic millimeters.
+    pub fn mm3(n: f64) -> Self {
+        Self::mm(n) * Self::mm(1.0) * Self::mm(1.0)
     }
 
     /// This many centimeters.
@@ -31,7 +36,7 @@ impl Dimensional {
 
     /// This many square centimeters.
     pub fn cm2(n: f64) -> Self {
-        Self::cm(n) * Self::cm(n)
+        Self::cm(n) * Self::cm(1.0)
     }
 
     /// This many inches.
@@ -43,6 +48,11 @@ impl Dimensional {
                 unit_angle: Default::default(),
             },
         }
+    }
+
+    /// This many square inches
+    pub fn inches2(n: f64) -> Self {
+        Self::inches(n) * Self::inches(1.0)
     }
 
     /// This many feet.
@@ -65,6 +75,11 @@ impl Dimensional {
                 unit_angle: Some((AngleUnit::Deg, 1)),
             },
         }
+    }
+
+    /// This many degrees squared.
+    pub fn degrees2(n: f64) -> Self {
+        Self::degrees(n) * Self::degrees(1.0)
     }
 
     /// This many radians.
