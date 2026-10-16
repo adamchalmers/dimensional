@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 const MM_PER_INCH: f64 = 25.4;
 const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
 
@@ -5,6 +6,9 @@ const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
 mod constructors;
 /// Implementing `Display` for pretty formatting.
 mod format;
+
+/// Convenient alias.
+pub type Num = Dimensional;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Dimensional {

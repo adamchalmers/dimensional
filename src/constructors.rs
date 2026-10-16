@@ -13,6 +13,11 @@ impl Dimensional {
         }
     }
 
+    /// This many square millimeters.
+    pub fn mm2(n: f64) -> Self {
+        Self::mm(n) * Self::mm(n)
+    }
+
     /// This many centimeters.
     pub fn cm(n: f64) -> Self {
         Self {
