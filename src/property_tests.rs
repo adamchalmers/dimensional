@@ -1,6 +1,6 @@
 use std::num::NonZeroI8;
 
-use crate::{AngleUnit, DimensionalUnits, DistanceUnit, Num};
+use crate::{AngleUnit, Dimension, DistanceUnit, Num};
 use proptest::prelude::*;
 
 const BIG: f64 = 100000000000.0;
@@ -12,14 +12,14 @@ proptest! {
     }
 
     #[test]
-    fn x_and_x_plus_1_are_not_equal(n in -BIG..BIG, units: DimensionalUnits) {
+    fn x_and_x_plus_1_are_not_equal(n in -BIG..BIG, units: Dimension) {
         let num = Num{n, units};
         let other = Num{n: n + 1.0, units};
         assert_ne!(num, other);
     }
 
     #[test]
-    fn additive_inverse(a in -BIG..BIG, b in -BIG..BIG, units: DimensionalUnits) {
+    fn additive_inverse(a in -BIG..BIG, b in -BIG..BIG, units: Dimension) {
         let a = Num{n: a, units};
         let b = Num{n: b, units};
         assert_nearly_eq(a + b - a, b, 0.0001);
@@ -69,7 +69,7 @@ proptest! {
     ) {
         let n_dist = NonZeroI8::try_from(n_dist).expect("Should be handled by the prop_filter above");
         let n_ang = NonZeroI8::try_from(n_ang).expect("Should be handled by the prop_filter above");
-        let units = DimensionalUnits {
+        let units = Dimension {
             unit_distance: u_dist.map(|u| (u, n_dist).into()),
             unit_angle: u_ang.map(|u| (u, n_ang).into()),
         };

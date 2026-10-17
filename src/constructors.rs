@@ -1,6 +1,6 @@
 use std::num::NonZeroI8;
 
-use crate::{AngleUnit, Dimensional, DimensionalUnits, DistanceUnit};
+use crate::{AngleUnit, Dimension, Dimensional, DistanceUnit};
 
 pub(crate) const ONE: NonZeroI8 = NonZeroI8::new(1).unwrap();
 
@@ -10,7 +10,7 @@ impl Dimensional {
     pub fn mm(n: f64) -> Self {
         Self {
             n,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Some((DistanceUnit::Mm, ONE).into()),
                 unit_angle: Default::default(),
             },
@@ -31,7 +31,7 @@ impl Dimensional {
     pub fn cm(n: f64) -> Self {
         Self {
             n: n * 10.0,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Some((DistanceUnit::Mm, ONE).into()),
                 unit_angle: Default::default(),
             },
@@ -47,7 +47,7 @@ impl Dimensional {
     pub fn inches(n: f64) -> Self {
         Self {
             n,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Some((DistanceUnit::Inch, ONE).into()),
                 unit_angle: Default::default(),
             },
@@ -63,7 +63,7 @@ impl Dimensional {
     pub fn feet(n: f64) -> Self {
         Self {
             n: n * 12.0,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Some((DistanceUnit::Inch, ONE).into()),
                 unit_angle: Default::default(),
             },
@@ -74,7 +74,7 @@ impl Dimensional {
     pub fn degrees(n: f64) -> Self {
         Self {
             n,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Default::default(),
                 unit_angle: Some((AngleUnit::Deg, ONE).into()),
             },
@@ -90,7 +90,7 @@ impl Dimensional {
     pub fn radians(n: f64) -> Self {
         Self {
             n,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Default::default(),
                 unit_angle: Some((AngleUnit::Rad, ONE).into()),
             },
@@ -109,7 +109,7 @@ impl Dimensional {
     pub fn mm_inverse(n: f64) -> Self {
         Self {
             n,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance: Some((DistanceUnit::Mm, -ONE).into()),
                 unit_angle: Default::default(),
             },
