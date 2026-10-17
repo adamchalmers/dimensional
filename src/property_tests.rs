@@ -1,7 +1,15 @@
-use crate::{AngleUnit, Dimension, DimensionCount, DistanceUnit, Num};
+use std::assert_matches;
+
+use crate::{
+    AngleUnit, Dimension, DimensionAngle, DimensionCount, DimensionDistance, DistanceUnit, Num,
+};
 use proptest::prelude::*;
 
 const BIG: f64 = 100000000000.0;
+
+pub(super) fn dimension_count() -> impl Strategy<Value = DimensionCount> {
+    (-10i8..10).prop_filter_map("nonzero", DimensionCount::new)
+}
 
 proptest! {
     #[test]
@@ -23,23 +31,39 @@ proptest! {
         assert_nearly_eq(a + b - a, b, 0.0001);
     }
 
-    // #[test]
-    // fn multiplicative_inverse(
-    //     a in (-BIG..BIG).prop_filter("nonzero", |x| *x != 0f64),
-    //     b in (-BIG..BIG),
-    //     units: Dimension,
-    // ) {
-    //     let a = Num{n: a, units};
-    //     let b = Num{n: b, units};
-    //     let product = a * b;
-    //     assert_nearly_eq(product / a, b, 0.0001);
-    // }
+    #[test]
+    fn additive_identity(n in -BIG..BIG, units: Dimension) {
+        let num = Num{n, units};
+        let zero = Num{n: 0.0, units};
+        assert_eq!(num + zero, num);
+    }
+
+    #[test]
+    fn multiplicative_inverse(
+        a in (-BIG..BIG).prop_filter("nonzero", |x| *x != 0f64),
+        b in (-BIG..BIG),
+        units: Dimension,
+    ) {
+        let a = Num{n: a, units};
+        let b = Num{n: b, units};
+        let product = a * b;
+        assert_nearly_eq(product / a, b, 0.0001);
+    }
 
     #[test]
     fn adding_compatible_numbers(n: Num) {
         let x0 = n.checked_add(n);
         // This should succeed because n+n never mixes incompatible units.
         let _x0 = x0.unwrap();
+    }
+
+    #[test]
+    fn adding_incompatible_numbers(a in -BIG..BIG, b in -BIG..BIG, ua: DimensionAngle, ub: DimensionDistance) {
+        let angle = Num{n: a, units: Dimension{unit_angle: Some(ua), unit_distance: None}};
+        let distance = Num{n: b, units: Dimension{unit_angle: None, unit_distance: Some(ub)}};
+
+        // Adding an angle and distance should never succeed.
+        assert_matches!(angle.checked_add(distance), Err(crate::ConversionError::MixedDistance(_, _)));
     }
 
     #[test]
@@ -62,11 +86,9 @@ proptest! {
         a in -BIG..BIG,
         u_dist: Option<DistanceUnit>,
         u_ang: Option<AngleUnit>,
-        n_dist in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
-        n_ang in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
+        n_dist in dimension_count(),
+        n_ang in dimension_count(),
     ) {
-        let n_dist = DimensionCount::try_from(n_dist).expect("Should be handled by the prop_filter above");
-        let n_ang = DimensionCount::try_from(n_ang).expect("Should be handled by the prop_filter above");
         let units = Dimension {
             unit_distance: u_dist.map(|u| (u, n_dist).into()),
             unit_angle: u_ang.map(|u| (u, n_ang).into()),

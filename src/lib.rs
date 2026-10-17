@@ -42,6 +42,7 @@ pub struct Dimension {
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionDistance {
     pub unit: DistanceUnit,
+    #[cfg_attr(test, proptest(strategy = "crate::property_tests::dimension_count()"))]
     pub count: DimensionCount,
 }
 
@@ -55,6 +56,7 @@ impl From<(DistanceUnit, DimensionCount)> for DimensionDistance {
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionAngle {
     pub unit: AngleUnit,
+    #[cfg_attr(test, proptest(strategy = "crate::property_tests::dimension_count()"))]
     pub count: DimensionCount,
 }
 
