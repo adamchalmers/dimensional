@@ -1,21 +1,80 @@
+#![doc = include_str!("../README.md")]
+
 const MM_PER_INCH: f64 = 25.4;
 const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
+
+type DimensionCount = std::num::NonZeroI8;
 
 /// Convenient constructors for Dimensional, like literals.
 mod constructors;
 /// Implementing `Display` for pretty formatting.
 mod format;
 
-#[derive(Debug, Clone, Copy)]
+#[cfg(test)]
+mod property_tests;
+#[cfg(test)]
+mod tests;
+
+/// Convenient alias.
+pub type Num = Dimensional;
+
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Dimensional {
     n: f64,
-    units: DimensionalUnits,
+    units: Dimension,
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
-pub struct DimensionalUnits {
-    unit_distance: Option<(DistanceUnit, i8)>,
-    unit_angle: Option<(AngleUnit, i8)>,
+impl std::fmt::Debug for Dimensional {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} {}>", self.n, self.units)
+    }
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct Dimension {
+    unit_distance: Option<DimensionDistance>,
+    unit_angle: Option<DimensionAngle>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct DimensionDistance {
+    pub unit: DistanceUnit,
+    #[cfg_attr(test, proptest(strategy = "crate::property_tests::dimension_count()"))]
+    pub count: DimensionCount,
+}
+
+impl From<(DistanceUnit, DimensionCount)> for DimensionDistance {
+    fn from((unit, count): (DistanceUnit, DimensionCount)) -> Self {
+        Self { unit, count }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct DimensionAngle {
+    pub unit: AngleUnit,
+    #[cfg_attr(test, proptest(strategy = "crate::property_tests::dimension_count()"))]
+    pub count: DimensionCount,
+}
+
+impl From<(AngleUnit, DimensionCount)> for DimensionAngle {
+    fn from((unit, count): (AngleUnit, DimensionCount)) -> Self {
+        Self { unit, count }
+    }
+}
+
+impl std::fmt::Debug for Dimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match (self.unit_distance, self.unit_angle) {
+            (Some(dist), Some(ang)) => write!(f, "{dist:?}-{ang:?}"),
+            (Some(dist), None) => write!(f, "{dist:?}"),
+            (None, Some(ang)) => write!(f, "{ang:?}"),
+            (None, None) => write!(f, "_"),
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -47,33 +106,62 @@ fn factor_for_angle(a_unit: AngleUnit, b_unit: AngleUnit) -> f64 {
     }
 }
 
-impl DimensionalUnits {
+impl Dimension {
     /// If the units are comensurable, returns a conversion factor to convert
     /// `other` into the units of `self`.
     /// e.g. cm and inches are convertible, with a factor of 25.4
     /// If they're not comensurable (e.g. cm and radians)
-    fn conversion_for(&self, other: DimensionalUnits) -> Result<f64, ConversionError> {
+    fn conversion_for(&self, other: Dimension) -> Result<f64, ConversionError> {
         // Missing dimensions have exponent zero and must match the other operand.
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => return Err(ConversionError::MixedDistance(0, count)),
-            (Some((_, count)), None) => return Err(ConversionError::MixedDistance(count, 0)),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (None, Some(DimensionDistance { unit: _, count })) => {
+                return Err(ConversionError::MixedDistance(0, count.into()));
+            }
+            (Some(DimensionDistance { unit: _, count }), None) => {
+                return Err(ConversionError::MixedDistance(count.into(), 0));
+            }
+            (
+                Some(DimensionDistance {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(DimensionDistance {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
                 if a_count != b_count {
-                    return Err(ConversionError::MixedDistance(a_count, b_count));
+                    return Err(ConversionError::MixedDistance(
+                        a_count.into(),
+                        b_count.into(),
+                    ));
                 }
-                factor_for_distance(a_unit, b_unit).powi(i32::from(b_count))
+                factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
             }
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => return Err(ConversionError::MixedAngle(0, count)),
-            (Some((_, count)), None) => return Err(ConversionError::MixedAngle(count, 0)),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (None, Some(DimensionAngle { unit: _, count })) => {
+                return Err(ConversionError::MixedAngle(0, count.into()));
+            }
+            (Some(DimensionAngle { unit: _, count }), None) => {
+                return Err(ConversionError::MixedAngle(count.into(), 0));
+            }
+            (
+                Some(DimensionAngle {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(DimensionAngle {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
                 if a_count != b_count {
-                    return Err(ConversionError::MixedAngle(a_count, b_count));
+                    return Err(ConversionError::MixedAngle(a_count.into(), b_count.into()));
                 }
-                factor_for_angle(a_unit, b_unit).powi(i32::from(b_count))
+                factor_for_angle(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
             }
         };
 
@@ -108,6 +196,7 @@ impl PartialEq for Dimensional {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum DistanceUnit {
     /// Millimeters
     Mm,
@@ -116,6 +205,7 @@ pub enum DistanceUnit {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Copy, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum AngleUnit {
     /// Degrees
     Deg,
@@ -130,7 +220,7 @@ impl Dimensional {
         Ok(self)
     }
 
-    pub fn pow(self, exponent: u16) -> Self {
+    pub fn powi(self, exponent: u16) -> Self {
         if exponent == 0 {
             return Self::unitless(1.0);
         }
@@ -142,6 +232,7 @@ impl Dimensional {
     }
 
     pub fn sqrt(self) -> Result<Self, ArithmeticError> {
+        /// Ensures that 'x' is even before halving it.
         fn checked_half(x: i8) -> Result<i8, ArithmeticError> {
             if x % 2 == 0 {
                 Ok(x / 2)
@@ -149,14 +240,26 @@ impl Dimensional {
                 Err(ArithmeticError::DimensionalityMustBeInteger(x, 2))
             }
         }
-        let units = DimensionalUnits {
-            unit_distance: if let Some((unit, count)) = self.units.unit_distance {
-                Some((unit, checked_half(count)?))
+
+        let units = Dimension {
+            unit_distance: if let Some(DimensionDistance { unit, count }) = self.units.unit_distance
+            {
+                let dim = checked_half(count.into())?;
+                if let Ok(count) = DimensionCount::try_from(dim) {
+                    Some(DimensionDistance { unit, count })
+                } else {
+                    None
+                }
             } else {
                 None
             },
-            unit_angle: if let Some((unit, count)) = self.units.unit_angle {
-                Some((unit, checked_half(count)?))
+            unit_angle: if let Some(DimensionAngle { unit, count }) = self.units.unit_angle {
+                let dim = checked_half(count.into())?;
+                if let Ok(count) = DimensionCount::try_from(dim) {
+                    Some(DimensionAngle { unit, count })
+                } else {
+                    None
+                }
             } else {
                 None
             },
@@ -165,6 +268,14 @@ impl Dimensional {
             n: self.n.sqrt(),
             units,
         })
+    }
+
+    /// If sign is negative, make the sign positive.
+    pub fn abs(self) -> Self {
+        Self {
+            n: self.n.abs(),
+            units: self.units,
+        }
     }
 }
 
@@ -206,10 +317,10 @@ impl std::ops::Div for Dimensional {
         // Negate rhs
         rhs.n = rhs.n.recip();
         if let Some(x) = &mut rhs.units.unit_distance {
-            x.1 = -x.1;
+            x.count = -x.count;
         }
         if let Some(x) = &mut rhs.units.unit_angle {
-            x.1 = -x.1;
+            x.count = -x.count;
         }
 
         // Then it's just mult.
@@ -227,10 +338,24 @@ impl std::ops::Mul for Dimensional {
             (None, None) => None,
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_distance(a_unit, b_unit).powi(i32::from(b_count));
-                let sum = a_count + b_count;
-                if sum == 0 { None } else { Some((a_unit, sum)) }
+            (
+                Some(DimensionDistance {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(DimensionDistance {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
+                conversion_factor *=
+                    factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
+                DimensionCount::try_from(i8::from(a_count) + i8::from(b_count))
+                    .ok()
+                    .map(|sum| DimensionDistance {
+                        unit: a_unit,
+                        count: sum,
+                    })
             }
         };
 
@@ -238,16 +363,21 @@ impl std::ops::Mul for Dimensional {
             (None, None) => None,
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_angle(a_unit, b_unit).powi(i32::from(b_count));
-                let sum = a_count + b_count;
-                if sum == 0 { None } else { Some((a_unit, sum)) }
+            (Some(a), Some(b)) => {
+                conversion_factor *=
+                    factor_for_angle(a.unit, b.unit).powi(i32::from(i8::from(b.count)));
+                DimensionCount::try_from(i8::from(a.count) + i8::from(b.count))
+                    .ok()
+                    .map(|sum| DimensionAngle {
+                        unit: a.unit,
+                        count: sum,
+                    })
             }
         };
 
         Self {
             n: self.n * rhs.n * conversion_factor,
-            units: DimensionalUnits {
+            units: Dimension {
                 unit_distance,
                 unit_angle,
             },
@@ -256,9 +386,8 @@ impl std::ops::Mul for Dimensional {
 }
 
 #[cfg(test)]
-mod tests {
+mod unit_tests {
 
-    use std::assert_matches;
     use std::f64::consts::PI;
 
     use super::*;
@@ -373,10 +502,10 @@ mod tests {
     #[test]
     fn compound_units_require_matching_exponents() {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
-        let b = Dimensional::mm(1.0).pow(2) * Dimensional::degrees(1.0);
+        let b = Dimensional::mm(1.0).powi(2) * Dimensional::degrees(1.0);
         assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 2)));
 
-        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).pow(2);
+        let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).powi(2);
         assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 2)));
     }
 
@@ -384,192 +513,12 @@ mod tests {
     fn squaring() {
         // a * a should be a^2
         let a = Dimensional::mm(1.0) * Dimensional::degrees(30.0);
-        assert_eq!(a * a, a.pow(2));
+        assert_eq!(a * a, a.powi(2));
     }
 
     #[test]
     fn sqrt_is_inverse_of_square() {
         let a = Dimensional::degrees(30.0);
-        assert_eq!(a, a.pow(2).sqrt().unwrap());
-    }
-
-    #[test]
-    fn test_main() {
-        println!("\n\n## Equality\n");
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::mm(1.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::cm(1.0);
-        let b = Dimensional::mm(10.0);
-        assert_eq!(a, b);
-        println!("1cm == {b}");
-
-        let a = Dimensional::cm2(1.0);
-        let b = Dimensional::mm(100.0) * Dimensional::mm(1.0);
-        assert_eq!(a, b);
-        println!("1cm² == {b}");
-
-        let a = Dimensional::mm(25.4);
-        let b = Dimensional::inches(1.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::feet(1.0);
-        let b = Dimensional::inches(12.0);
-        assert_eq!(a, b);
-        println!("1ft == {b}");
-
-        let a = Dimensional::radians(2.0 * PI);
-        let b = Dimensional::degrees(360.0);
-        assert_eq!(a, b);
-        println!("{a} == {b}");
-
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::degrees(10.0);
-        assert_ne!(a, b);
-        println!("{a} != {b}");
-
-        let a = Dimensional::mm(1.0);
-        let b = Dimensional::unitless(1.0);
-        assert_ne!(a, b);
-        println!("{a} != {b}");
-
-        println!("```");
-
-        println!("\n\n## Addition\n");
-
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::mm(2.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(12.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::mm(2.0);
-        println!("{x} - {y} == {}", x - y);
-        assert_eq!(x - y, Dimensional::mm(8.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::cm(2.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(30.0));
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::inches(1.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(35.4));
-
-        let x = Dimensional::degrees(360.0);
-        let y = Dimensional::degrees(40.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::degrees(400.0));
-
-        let x = Dimensional::degrees(360.0);
-        let y = Dimensional::radians(2.0 * PI);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::degrees(720.0));
-
-        let x = Dimensional::radians(0.0);
-        let y = Dimensional::degrees(0.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::radians(0.0));
-
-        let x = Dimensional::mm(1.0) * Dimensional::mm(1.0);
-        let y = Dimensional::inches(1.0) * Dimensional::inches(1.0);
-        println!("{x} + {y} == {}", x + y);
-        assert_eq!(x + y, Dimensional::mm(646.16) * Dimensional::mm(1.0));
-
-        println!("```");
-
-        println!("\n\n## Incompatible additions\n");
-
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::radians(2.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-        println!("{y} + {x} == {:?}", x.checked_add(y));
-        assert_matches!(y.checked_add(x), Err(_));
-
-        let x = Dimensional::cm(10.0);
-        let y = Dimensional::cm2(10.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-
-        let x = Dimensional::degrees(10.0);
-        let y = Dimensional::degrees(10.0) * Dimensional::degrees(1.0);
-        println!("{x} + {y} == {:?}", x.checked_add(y));
-        assert_matches!(x.checked_add(y), Err(_));
-
-        println!("```");
-
-        println!("\n\n## Scaling a length\n");
-        println!("```");
-
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} * {y} == {}", x * y);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::unitless(2.0);
-        println!("{x} / {y} == {}", x / y);
-
-        println!("```");
-
-        println!("\n\n## Areas\n");
-        println!("```");
-
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(3.0);
-        println!("{a} * {b} == {}", a * b);
-        let x = Dimensional::mm(10.0);
-        let y = Dimensional::inches(1.0);
-        println!("{x} * {y} == {}", x * y);
-        let two_inches = Dimensional::mm(25.4 * 2.0);
-        println!("{y} * {two_inches} == {}", y * two_inches);
-        let one = Dimensional::degrees(1.0);
-        let full_circle = Dimensional::radians(2.0 * PI);
-        println!("{one} * {full_circle} == {}", one * full_circle);
-        let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
-        let b = Dimensional::mm(3.0) * Dimensional::mm(1.0);
-        println!("{a} + {b} == {}", a + b);
-
-        println!("```");
-
-        println!("\n\n## Division removes dimensions\n");
-        println!("```");
-
-        let a = Dimensional::mm(2.0) * Dimensional::mm(1.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a} / {b} == {}", a / b);
-        assert_eq!(a / b, Dimensional::mm(0.5));
-
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::mm(4.0);
-        println!("{a} / {b} == {}", a / b);
-        assert_eq!(a / b, Dimensional::unitless(0.5));
-
-        let q = Dimensional::unitless(2.0);
-        let r = Dimensional::mm(4.0);
-        println!("{q} / {r} == {}", q / r);
-        assert_eq!(q / r, Dimensional::mm_inverse(0.5));
-
-        let a = Dimensional::mm(25.4);
-        let b = Dimensional::inches(1.0);
-        println!("{a} / {b} == {}", a / b);
-
-        println!("```");
-
-        println!("\n\n## Mixed units\n");
-        println!("```");
-        let a = Dimensional::mm(2.0);
-        let b = Dimensional::degrees(4.0);
-        println!("{a} * {b} == {}", a * b);
-        println!("{a} * {b} / {a} == {}", a * b / a);
-
-        println!("```");
+        assert_eq!(a, a.powi(2).sqrt().unwrap());
     }
 }
