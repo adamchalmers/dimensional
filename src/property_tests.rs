@@ -19,10 +19,34 @@ proptest! {
     }
 
     #[test]
-    fn subtraction_is_inverse_of_addition(a in -BIG..BIG, b in -BIG..BIG, units: DimensionalUnits) {
+    fn additive_inverse(a in -BIG..BIG, b in -BIG..BIG, units: DimensionalUnits) {
         let a = Num{n: a, units};
         let b = Num{n: b, units};
         assert_nearly_eq(a + b - a, b, 0.0001);
+    }
+
+    // #[test]
+    // fn multiplicative_inverse(
+    //     a in (-BIG..BIG).prop_filter("nonzero", |x| *x != 0f64),
+    //     b in (-BIG..BIG),
+    //     units: DimensionalUnits::prop_filter("reasonable dimensionality", |d| d < 10),
+    // ) {
+    //     let a = Num{n: a, units};
+    //     let b = Num{n: b, units};
+    //     let product = a * b;
+    //     assert_nearly_eq(product / a, b, 0.0001);
+    // }
+
+    #[test]
+    fn adding_compatible_numbers(n: Num) {
+        let x0 = n.checked_add(n);
+        // This should succeed because n+n never mixes incompatible units.
+        let _x0 = x0.unwrap();
+    }
+
+    #[test]
+    fn scaling_is_multiplication(n: Num) {
+        assert_eq!(n + n, Num::unitless(2.0) * n);
     }
 
     #[test]
