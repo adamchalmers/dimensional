@@ -1,4 +1,6 @@
-use crate::{AngleUnit, ArithmeticError, Dimensional, DimensionalUnits, DistanceUnit};
+use crate::{
+    AngleUnit, ArithmeticError, Dimensional, DimensionalUnits, DistanceUnit, constructors::ONE,
+};
 
 impl std::fmt::Display for Dimensional {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -20,19 +22,19 @@ impl std::fmt::Display for Dimensional {
 impl std::fmt::Display for DimensionalUnits {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let dist_str = if let Some((u, n)) = self.unit_distance {
-            if n == 1 {
+            if n == ONE {
                 Some(format!("{u}"))
             } else {
-                Some(format!("{u}{}", superscript(n)))
+                Some(format!("{u}{}", superscript(n.into())))
             }
         } else {
             None
         };
         let angle_str = if let Some((u, n)) = self.unit_angle {
-            if n == 1 {
+            if n == ONE {
                 Some(format!("{u}"))
             } else {
-                Some(format!("{u}{}", superscript(n)))
+                Some(format!("{u}{}", superscript(n.into())))
             }
         } else {
             None

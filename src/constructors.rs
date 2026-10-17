@@ -1,4 +1,8 @@
+use std::num::NonZeroI8;
+
 use crate::{AngleUnit, Dimensional, DimensionalUnits, DistanceUnit};
+
+pub(crate) const ONE: NonZeroI8 = NonZeroI8::new(1).unwrap();
 
 /// Implement a bunch of convenient constructors.
 impl Dimensional {
@@ -7,7 +11,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, 1)),
+                unit_distance: Some((DistanceUnit::Mm, ONE)),
                 unit_angle: Default::default(),
             },
         }
@@ -28,7 +32,7 @@ impl Dimensional {
         Self {
             n: n * 10.0,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, 1)),
+                unit_distance: Some((DistanceUnit::Mm, ONE)),
                 unit_angle: Default::default(),
             },
         }
@@ -44,7 +48,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Inch, 1)),
+                unit_distance: Some((DistanceUnit::Inch, ONE)),
                 unit_angle: Default::default(),
             },
         }
@@ -60,7 +64,7 @@ impl Dimensional {
         Self {
             n: n * 12.0,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Inch, 1)),
+                unit_distance: Some((DistanceUnit::Inch, ONE)),
                 unit_angle: Default::default(),
             },
         }
@@ -72,7 +76,7 @@ impl Dimensional {
             n,
             units: DimensionalUnits {
                 unit_distance: Default::default(),
-                unit_angle: Some((AngleUnit::Deg, 1)),
+                unit_angle: Some((AngleUnit::Deg, ONE)),
             },
         }
     }
@@ -88,7 +92,7 @@ impl Dimensional {
             n,
             units: DimensionalUnits {
                 unit_distance: Default::default(),
-                unit_angle: Some((AngleUnit::Rad, 1)),
+                unit_angle: Some((AngleUnit::Rad, ONE)),
             },
         }
     }
@@ -106,7 +110,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, -1)),
+                unit_distance: Some((DistanceUnit::Mm, -ONE)),
                 unit_angle: Default::default(),
             },
         }

@@ -1,3 +1,5 @@
+use std::num::NonZeroI8;
+
 use crate::{AngleUnit, DimensionalUnits, DistanceUnit, Num};
 use proptest::prelude::*;
 
@@ -41,6 +43,8 @@ proptest! {
         n_dist in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
         n_ang in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
     ) {
+        let n_dist = NonZeroI8::try_from(n_dist).expect("Should be handled by the prop_filter above");
+        let n_ang = NonZeroI8::try_from(n_ang).expect("Should be handled by the prop_filter above");
         let units = DimensionalUnits {
             unit_distance: u_dist.map(|u| (u, n_dist)),
             unit_angle: u_ang.map(|u| (u, n_ang)),

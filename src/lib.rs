@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+
+use std::num::NonZeroI8;
 const MM_PER_INCH: f64 = 25.4;
 const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
 
@@ -31,8 +33,8 @@ impl std::fmt::Debug for Dimensional {
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionalUnits {
-    unit_distance: Option<(DistanceUnit, i8)>,
-    unit_angle: Option<(AngleUnit, i8)>,
+    unit_distance: Option<(DistanceUnit, NonZeroI8)>,
+    unit_angle: Option<(AngleUnit, NonZeroI8)>,
 }
 
 impl std::fmt::Debug for DimensionalUnits {
@@ -84,24 +86,31 @@ impl DimensionalUnits {
         // Missing dimensions have exponent zero and must match the other operand.
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => return Err(ConversionError::MixedDistance(0, count)),
-            (Some((_, count)), None) => return Err(ConversionError::MixedDistance(count, 0)),
+            (None, Some((_, count))) => {
+                return Err(ConversionError::MixedDistance(0, count.into()));
+            }
+            (Some((_, count)), None) => {
+                return Err(ConversionError::MixedDistance(count.into(), 0));
+            }
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
                 if a_count != b_count {
-                    return Err(ConversionError::MixedDistance(a_count, b_count));
+                    return Err(ConversionError::MixedDistance(
+                        a_count.into(),
+                        b_count.into(),
+                    ));
                 }
-                factor_for_distance(a_unit, b_unit).powi(i32::from(b_count))
+                factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
             }
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => return Err(ConversionError::MixedAngle(0, count)),
-            (Some((_, count)), None) => return Err(ConversionError::MixedAngle(count, 0)),
+            (None, Some((_, count))) => return Err(ConversionError::MixedAngle(0, count.into())),
+            (Some((_, count)), None) => return Err(ConversionError::MixedAngle(count.into(), 0)),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
                 if a_count != b_count {
-                    return Err(ConversionError::MixedAngle(a_count, b_count));
+                    return Err(ConversionError::MixedAngle(a_count.into(), b_count.into()));
                 }
-                factor_for_angle(a_unit, b_unit).powi(i32::from(b_count))
+                factor_for_angle(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
             }
         };
 
@@ -183,12 +192,22 @@ impl Dimensional {
 
         let units = DimensionalUnits {
             unit_distance: if let Some((unit, count)) = self.units.unit_distance {
-                Some((unit, checked_half(count)?))
+                let dim = checked_half(count.into())?;
+                if let Ok(dim) = NonZeroI8::try_from(dim) {
+                    Some((unit, dim))
+                } else {
+                    None
+                }
             } else {
                 None
             },
             unit_angle: if let Some((unit, count)) = self.units.unit_angle {
-                Some((unit, checked_half(count)?))
+                let dim = checked_half(count.into())?;
+                if let Ok(dim) = NonZeroI8::try_from(dim) {
+                    Some((unit, dim))
+                } else {
+                    None
+                }
             } else {
                 None
             },
@@ -268,9 +287,11 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_distance(a_unit, b_unit).powi(i32::from(b_count));
-                let sum = a_count + b_count;
-                if sum == 0 { None } else { Some((a_unit, sum)) }
+                conversion_factor *=
+                    factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
+                NonZeroI8::try_from(i8::from(a_count) + i8::from(b_count))
+                    .ok()
+                    .map(|sum| (a_unit, sum))
             }
         };
 
@@ -279,9 +300,11 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
-                conversion_factor *= factor_for_angle(a_unit, b_unit).powi(i32::from(b_count));
-                let sum = a_count + b_count;
-                if sum == 0 { None } else { Some((a_unit, sum)) }
+                conversion_factor *=
+                    factor_for_angle(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
+                NonZeroI8::try_from(i8::from(a_count) + i8::from(b_count))
+                    .ok()
+                    .map(|sum| (a_unit, sum))
             }
         };
 
