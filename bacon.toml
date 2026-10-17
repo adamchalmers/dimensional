@@ -69,6 +69,7 @@ analyzer = "nextest"
 [jobs.doc]
 command = ["cargo", "doc", "--no-deps"]
 need_stdout = false
+watch = ["README.md"]
 
 # If the doc compiles, then it opens in your browser and bacon switches
 # to the previous job
