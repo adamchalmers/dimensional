@@ -33,8 +33,34 @@ impl std::fmt::Debug for Dimensional {
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionalUnits {
-    unit_distance: Option<(DistanceUnit, NonZeroI8)>,
-    unit_angle: Option<(AngleUnit, NonZeroI8)>,
+    unit_distance: Option<DistanceUnits>,
+    unit_angle: Option<AngleUnits>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct DistanceUnits {
+    pub unit: DistanceUnit,
+    pub count: NonZeroI8,
+}
+
+impl From<(DistanceUnit, NonZeroI8)> for DistanceUnits {
+    fn from((unit, count): (DistanceUnit, NonZeroI8)) -> Self {
+        Self { unit, count }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct AngleUnits {
+    pub unit: AngleUnit,
+    pub count: NonZeroI8,
+}
+
+impl From<(AngleUnit, NonZeroI8)> for AngleUnits {
+    fn from((unit, count): (AngleUnit, NonZeroI8)) -> Self {
+        Self { unit, count }
+    }
 }
 
 impl std::fmt::Debug for DimensionalUnits {
@@ -86,13 +112,22 @@ impl DimensionalUnits {
         // Missing dimensions have exponent zero and must match the other operand.
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => {
+            (None, Some(DistanceUnits { unit: _, count })) => {
                 return Err(ConversionError::MixedDistance(0, count.into()));
             }
-            (Some((_, count)), None) => {
+            (Some(DistanceUnits { unit: _, count }), None) => {
                 return Err(ConversionError::MixedDistance(count.into(), 0));
             }
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (
+                Some(DistanceUnits {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(DistanceUnits {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
                 if a_count != b_count {
                     return Err(ConversionError::MixedDistance(
                         a_count.into(),
@@ -104,9 +139,22 @@ impl DimensionalUnits {
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
             (None, None) => 1.0,
-            (None, Some((_, count))) => return Err(ConversionError::MixedAngle(0, count.into())),
-            (Some((_, count)), None) => return Err(ConversionError::MixedAngle(count.into(), 0)),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (None, Some(AngleUnits { unit: _, count })) => {
+                return Err(ConversionError::MixedAngle(0, count.into()));
+            }
+            (Some(AngleUnits { unit: _, count }), None) => {
+                return Err(ConversionError::MixedAngle(count.into(), 0));
+            }
+            (
+                Some(AngleUnits {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(AngleUnits {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
                 if a_count != b_count {
                     return Err(ConversionError::MixedAngle(a_count.into(), b_count.into()));
                 }
@@ -191,20 +239,20 @@ impl Dimensional {
         }
 
         let units = DimensionalUnits {
-            unit_distance: if let Some((unit, count)) = self.units.unit_distance {
+            unit_distance: if let Some(DistanceUnits { unit, count }) = self.units.unit_distance {
                 let dim = checked_half(count.into())?;
-                if let Ok(dim) = NonZeroI8::try_from(dim) {
-                    Some((unit, dim))
+                if let Ok(count) = NonZeroI8::try_from(dim) {
+                    Some(DistanceUnits { unit, count })
                 } else {
                     None
                 }
             } else {
                 None
             },
-            unit_angle: if let Some((unit, count)) = self.units.unit_angle {
+            unit_angle: if let Some(AngleUnits { unit, count }) = self.units.unit_angle {
                 let dim = checked_half(count.into())?;
-                if let Ok(dim) = NonZeroI8::try_from(dim) {
-                    Some((unit, dim))
+                if let Ok(count) = NonZeroI8::try_from(dim) {
+                    Some(AngleUnits { unit, count })
                 } else {
                     None
                 }
@@ -265,10 +313,10 @@ impl std::ops::Div for Dimensional {
         // Negate rhs
         rhs.n = rhs.n.recip();
         if let Some(x) = &mut rhs.units.unit_distance {
-            x.1 = -x.1;
+            x.count = -x.count;
         }
         if let Some(x) = &mut rhs.units.unit_angle {
-            x.1 = -x.1;
+            x.count = -x.count;
         }
 
         // Then it's just mult.
@@ -286,12 +334,24 @@ impl std::ops::Mul for Dimensional {
             (None, None) => None,
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (
+                Some(DistanceUnits {
+                    unit: a_unit,
+                    count: a_count,
+                }),
+                Some(DistanceUnits {
+                    unit: b_unit,
+                    count: b_count,
+                }),
+            ) => {
                 conversion_factor *=
                     factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
                 NonZeroI8::try_from(i8::from(a_count) + i8::from(b_count))
                     .ok()
-                    .map(|sum| (a_unit, sum))
+                    .map(|sum| DistanceUnits {
+                        unit: a_unit,
+                        count: sum,
+                    })
             }
         };
 
@@ -299,12 +359,15 @@ impl std::ops::Mul for Dimensional {
             (None, None) => None,
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
-            (Some((a_unit, a_count)), Some((b_unit, b_count))) => {
+            (Some(a), Some(b)) => {
                 conversion_factor *=
-                    factor_for_angle(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
-                NonZeroI8::try_from(i8::from(a_count) + i8::from(b_count))
+                    factor_for_angle(a.unit, b.unit).powi(i32::from(i8::from(b.count)));
+                NonZeroI8::try_from(i8::from(a.count) + i8::from(b.count))
                     .ok()
-                    .map(|sum| (a_unit, sum))
+                    .map(|sum| AngleUnits {
+                        unit: a.unit,
+                        count: sum,
+                    })
             }
         };
 

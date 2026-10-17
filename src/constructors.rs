@@ -11,7 +11,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, ONE)),
+                unit_distance: Some((DistanceUnit::Mm, ONE).into()),
                 unit_angle: Default::default(),
             },
         }
@@ -32,7 +32,7 @@ impl Dimensional {
         Self {
             n: n * 10.0,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, ONE)),
+                unit_distance: Some((DistanceUnit::Mm, ONE).into()),
                 unit_angle: Default::default(),
             },
         }
@@ -48,7 +48,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Inch, ONE)),
+                unit_distance: Some((DistanceUnit::Inch, ONE).into()),
                 unit_angle: Default::default(),
             },
         }
@@ -64,7 +64,7 @@ impl Dimensional {
         Self {
             n: n * 12.0,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Inch, ONE)),
+                unit_distance: Some((DistanceUnit::Inch, ONE).into()),
                 unit_angle: Default::default(),
             },
         }
@@ -76,7 +76,7 @@ impl Dimensional {
             n,
             units: DimensionalUnits {
                 unit_distance: Default::default(),
-                unit_angle: Some((AngleUnit::Deg, ONE)),
+                unit_angle: Some((AngleUnit::Deg, ONE).into()),
             },
         }
     }
@@ -92,7 +92,7 @@ impl Dimensional {
             n,
             units: DimensionalUnits {
                 unit_distance: Default::default(),
-                unit_angle: Some((AngleUnit::Rad, ONE)),
+                unit_angle: Some((AngleUnit::Rad, ONE).into()),
             },
         }
     }
@@ -110,7 +110,7 @@ impl Dimensional {
         Self {
             n,
             units: DimensionalUnits {
-                unit_distance: Some((DistanceUnit::Mm, -ONE)),
+                unit_distance: Some((DistanceUnit::Mm, -ONE).into()),
                 unit_angle: Default::default(),
             },
         }

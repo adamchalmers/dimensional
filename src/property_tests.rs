@@ -70,8 +70,8 @@ proptest! {
         let n_dist = NonZeroI8::try_from(n_dist).expect("Should be handled by the prop_filter above");
         let n_ang = NonZeroI8::try_from(n_ang).expect("Should be handled by the prop_filter above");
         let units = DimensionalUnits {
-            unit_distance: u_dist.map(|u| (u, n_dist)),
-            unit_angle: u_ang.map(|u| (u, n_ang)),
+            unit_distance: u_dist.map(|u| (u, n_dist).into()),
+            unit_angle: u_ang.map(|u| (u, n_ang).into()),
         };
         let n = Num{n: a, units};
         assert_eq!(n.powi(2).sqrt().unwrap(), n.abs());
