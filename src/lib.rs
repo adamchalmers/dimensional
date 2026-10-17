@@ -172,6 +172,7 @@ impl Dimensional {
     }
 
     pub fn sqrt(self) -> Result<Self, ArithmeticError> {
+        /// Ensures that 'x' is even before halving it.
         fn checked_half(x: i8) -> Result<i8, ArithmeticError> {
             if x % 2 == 0 {
                 Ok(x / 2)
@@ -179,6 +180,7 @@ impl Dimensional {
                 Err(ArithmeticError::DimensionalityMustBeInteger(x, 2))
             }
         }
+
         let units = DimensionalUnits {
             unit_distance: if let Some((unit, count)) = self.units.unit_distance {
                 Some((unit, checked_half(count)?))
