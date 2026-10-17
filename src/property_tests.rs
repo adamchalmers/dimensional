@@ -1,6 +1,4 @@
-use std::num::NonZeroI8;
-
-use crate::{AngleUnit, Dimension, DistanceUnit, Num};
+use crate::{AngleUnit, Dimension, DimensionCount, DistanceUnit, Num};
 use proptest::prelude::*;
 
 const BIG: f64 = 100000000000.0;
@@ -29,7 +27,7 @@ proptest! {
     // fn multiplicative_inverse(
     //     a in (-BIG..BIG).prop_filter("nonzero", |x| *x != 0f64),
     //     b in (-BIG..BIG),
-    //     units: DimensionalUnits::prop_filter("reasonable dimensionality", |d| d < 10),
+    //     units: Dimension,
     // ) {
     //     let a = Num{n: a, units};
     //     let b = Num{n: b, units};
@@ -67,8 +65,8 @@ proptest! {
         n_dist in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
         n_ang in (-10i8..10).prop_filter("dimensionality cannot be 0", |x| *x != 0i8),
     ) {
-        let n_dist = NonZeroI8::try_from(n_dist).expect("Should be handled by the prop_filter above");
-        let n_ang = NonZeroI8::try_from(n_ang).expect("Should be handled by the prop_filter above");
+        let n_dist = DimensionCount::try_from(n_dist).expect("Should be handled by the prop_filter above");
+        let n_ang = DimensionCount::try_from(n_ang).expect("Should be handled by the prop_filter above");
         let units = Dimension {
             unit_distance: u_dist.map(|u| (u, n_dist).into()),
             unit_angle: u_ang.map(|u| (u, n_ang).into()),

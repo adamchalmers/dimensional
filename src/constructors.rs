@@ -1,8 +1,8 @@
-use std::num::NonZeroI8;
+use crate::DimensionCount;
 
 use crate::{AngleUnit, Dimension, Dimensional, DistanceUnit};
 
-pub(crate) const ONE: NonZeroI8 = NonZeroI8::new(1).unwrap();
+pub(crate) const ONE: DimensionCount = DimensionCount::new(1).unwrap();
 
 /// Implement a bunch of convenient constructors.
 impl Dimensional {

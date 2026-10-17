@@ -1,8 +1,9 @@
 #![doc = include_str!("../README.md")]
 
-use std::num::NonZeroI8;
 const MM_PER_INCH: f64 = 25.4;
 const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
+
+type DimensionCount = std::num::NonZeroI8;
 
 /// Convenient constructors for Dimensional, like literals.
 mod constructors;
@@ -41,11 +42,11 @@ pub struct Dimension {
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionDistance {
     pub unit: DistanceUnit,
-    pub count: NonZeroI8,
+    pub count: DimensionCount,
 }
 
-impl From<(DistanceUnit, NonZeroI8)> for DimensionDistance {
-    fn from((unit, count): (DistanceUnit, NonZeroI8)) -> Self {
+impl From<(DistanceUnit, DimensionCount)> for DimensionDistance {
+    fn from((unit, count): (DistanceUnit, DimensionCount)) -> Self {
         Self { unit, count }
     }
 }
@@ -54,11 +55,11 @@ impl From<(DistanceUnit, NonZeroI8)> for DimensionDistance {
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DimensionAngle {
     pub unit: AngleUnit,
-    pub count: NonZeroI8,
+    pub count: DimensionCount,
 }
 
-impl From<(AngleUnit, NonZeroI8)> for DimensionAngle {
-    fn from((unit, count): (AngleUnit, NonZeroI8)) -> Self {
+impl From<(AngleUnit, DimensionCount)> for DimensionAngle {
+    fn from((unit, count): (AngleUnit, DimensionCount)) -> Self {
         Self { unit, count }
     }
 }
@@ -242,7 +243,7 @@ impl Dimensional {
             unit_distance: if let Some(DimensionDistance { unit, count }) = self.units.unit_distance
             {
                 let dim = checked_half(count.into())?;
-                if let Ok(count) = NonZeroI8::try_from(dim) {
+                if let Ok(count) = DimensionCount::try_from(dim) {
                     Some(DimensionDistance { unit, count })
                 } else {
                     None
@@ -252,7 +253,7 @@ impl Dimensional {
             },
             unit_angle: if let Some(DimensionAngle { unit, count }) = self.units.unit_angle {
                 let dim = checked_half(count.into())?;
-                if let Ok(count) = NonZeroI8::try_from(dim) {
+                if let Ok(count) = DimensionCount::try_from(dim) {
                     Some(DimensionAngle { unit, count })
                 } else {
                     None
@@ -347,7 +348,7 @@ impl std::ops::Mul for Dimensional {
             ) => {
                 conversion_factor *=
                     factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
-                NonZeroI8::try_from(i8::from(a_count) + i8::from(b_count))
+                DimensionCount::try_from(i8::from(a_count) + i8::from(b_count))
                     .ok()
                     .map(|sum| DimensionDistance {
                         unit: a_unit,
@@ -363,7 +364,7 @@ impl std::ops::Mul for Dimensional {
             (Some(a), Some(b)) => {
                 conversion_factor *=
                     factor_for_angle(a.unit, b.unit).powi(i32::from(i8::from(b.count)));
-                NonZeroI8::try_from(i8::from(a.count) + i8::from(b.count))
+                DimensionCount::try_from(i8::from(a.count) + i8::from(b.count))
                     .ok()
                     .map(|sum| DimensionAngle {
                         unit: a.unit,
