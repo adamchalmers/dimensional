@@ -1,0 +1,55 @@
+on:
+  workflow_dispatch:
+  pull_request:
+permissions: read-all
+name: Rust CI
+jobs:
+  check-lint:
+    name: Check lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Check lints
+        run: just lint
+
+  cargo-test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@nextest
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          prefix-key: v1-rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Tests + examples
+        shell: bash
+        run: |
+          just test
+        env:
+          RUST_BACKTRACE: 1
+
+  cargo-fmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: cargo-bins/cargo-binstall@main
+      - name: Install deps
+        run: cargo binstall cargo-sort typos-cli
+      - name: Run checks
+        run: just fmt-check
