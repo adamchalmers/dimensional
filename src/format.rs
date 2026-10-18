@@ -95,3 +95,20 @@ impl std::fmt::Display for ArithmeticError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Num;
+
+    #[test]
+    fn test_basic_formats() {
+        for (input, expected) in [
+            (Num::mm(13.0), "13mm"),
+            (Num::radians(13.0), "13rad"),
+            (Num::mm2(13.0), "13mm²"),
+        ] {
+            let actual = input.to_string();
+            assert_eq!(actual, expected);
+        }
+    }
+}
