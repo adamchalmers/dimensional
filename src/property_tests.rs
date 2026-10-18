@@ -25,6 +25,32 @@ proptest! {
     }
 
     #[test]
+    fn repeated_multiplication_is_exponentiation(n in -BIG..BIG, units: Dimension, exp in 1u16..5) {
+        let num = Num{n, units};
+        let product: Num = (0..exp).map(|_|num).reduce(|a, b|a * b).unwrap();
+        assert_eq!(product, num.powi(exp));
+    }
+
+    #[test]
+    fn addition_is_commutative(na in -BIG..BIG, nb in -BIG..BIG, units: Dimension) {
+        let a = Num{n: na, units};
+        let b = Num{n: nb, units};
+        assert_eq!(a + b, b + a);
+    }
+
+    #[test]
+    fn multiplication_is_commutative(na in -BIG..BIG, nb in -BIG..BIG, units: Dimension) {
+        let a = Num{n: na, units};
+        let b = Num{n: nb, units};
+        assert_eq!(a * b, b * a);
+    }
+
+    #[test]
+    fn exponentiation_identity(num: Num) {
+        assert_eq!(1.0, num.powi(0).n);
+    }
+
+    #[test]
     fn additive_inverse(a in -BIG..BIG, b in -BIG..BIG, units: Dimension) {
         let a = Num{n: a, units};
         let b = Num{n: b, units};
