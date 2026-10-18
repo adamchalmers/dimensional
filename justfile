@@ -4,7 +4,7 @@
     just fmt-check
 
 lint:
-    cargo clippy --tests --examples --benches
+    cargo clippy --tests --examples --benches -- -D warnings
 
 lint-fix:
     cargo clippy --tests --examples --benches --fix

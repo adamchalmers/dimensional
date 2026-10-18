@@ -1,4 +1,4 @@
-use crate::DimensionCount;
+use crate::dimension_count::DimensionCount;
 
 use crate::{AngleUnit, Dimension, Dimensional, DistanceUnit};
 

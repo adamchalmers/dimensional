@@ -7,10 +7,6 @@ use proptest::prelude::*;
 
 const BIG: f64 = 100000000000.0;
 
-pub(super) fn dimension_count() -> impl Strategy<Value = DimensionCount> {
-    (-10i8..10).prop_filter_map("nonzero", DimensionCount::new)
-}
-
 proptest! {
     #[test]
     fn equality_is_reflexive(num: Num) {
@@ -112,8 +108,8 @@ proptest! {
         a in -BIG..BIG,
         u_dist: Option<DistanceUnit>,
         u_ang: Option<AngleUnit>,
-        n_dist in dimension_count(),
-        n_ang in dimension_count(),
+        n_dist: DimensionCount,
+        n_ang: DimensionCount,
     ) {
         let units = Dimension {
             unit_distance: u_dist.map(|u| (u, n_dist).into()),
