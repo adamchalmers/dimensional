@@ -1,4 +1,4 @@
-use crate::{ArithmeticError, Num};
+use crate::Num;
 
 use std::f64::consts::PI;
 
@@ -62,25 +62,25 @@ fn incompatible_addition() {
     // Cannot add mm and radians
     assert_eq!(
         Num::mm(10.0).checked_add(Num::radians(2.0)),
-        Err(ConversionError::MixedDistance(1, 0))
+        Err(ConversionError::MixedDistance(1.into(), 0.into()))
     );
 
     // Cannot add radians and mm
     assert_eq!(
         Num::radians(2.0).checked_add(Num::mm(10.0)),
-        Err(ConversionError::MixedDistance(0, 1))
+        Err(ConversionError::MixedDistance(0.into(), 1.into()))
     );
 
     // Cannot add mm and mm squared
     assert_eq!(
         Num::mm(100.0).checked_add(Num::mm2(10000.0)),
-        Err(ConversionError::MixedDistance(1, 2))
+        Err(ConversionError::MixedDistance(1.into(), 2.into()))
     );
 
     // Cannot add degrees and degrees squared
     assert_eq!(
         Num::degrees(10.0).checked_add(Num::degrees(10.0) * Num::degrees(1.0)),
-        Err(ConversionError::MixedAngle(1, 2))
+        Err(ConversionError::MixedAngle(1.into(), 2.into()))
     );
 }
 
@@ -179,9 +179,32 @@ fn exponentiation() {
     assert_eq!(Num::mm2(4.0), Num::mm(2.0).powi(2));
 
     // Square root is the inverse of exponentiation.
-    assert_eq!(Num::mm2(4.0).sqrt().unwrap(), Num::mm(2.0));
+    assert_eq!(Num::mm2(4.0).sqrt(), Num::mm(2.0));
+    assert_eq!(Num::mm3(4.0).sqrt().powi(2), Num::mm3(4.0),);
+}
+
+#[test]
+fn fractional_exponents_convert_and_cancel() {
+    let mm = Num::mm(25.4).sqrt();
+    let inches = Num::inches(1.0).sqrt();
+    assert!((mm.checked_add(inches).unwrap().n - 2.0 * 25.4f64.sqrt()).abs() < 1e-12);
+    assert!(((mm / inches).n - 1.0).abs() < 1e-12);
+    assert!(((mm * inches).n - 25.4).abs() < 1e-12);
+    assert_eq!((mm / inches).units, crate::Dimension::unitless());
+    assert_eq!((mm * inches).units, Num::mm(1.0).units);
+    assert_eq!(Num::mm(4.0).sqrt().to_string(), "2mm¹⁄²");
+    assert_eq!(Num::mm_inverse(4.0).sqrt().to_string(), "2mm⁻¹⁄²");
+    assert_eq!(Num::mm(16.0).sqrt().sqrt().powi(4), Num::mm(16.0));
+
+    let angle = Num::degrees(180.0).sqrt();
+    let radians = Num::radians(std::f64::consts::PI).sqrt();
+    assert!((angle.checked_add(radians).unwrap().n - 2.0 * 180f64.sqrt()).abs() < 1e-12);
+    assert_eq!((angle / radians).units, crate::Dimension::unitless());
     assert_eq!(
-        Num::mm3(4.0).sqrt(),
-        Err(ArithmeticError::DimensionalityMustBeInteger(3, 2))
+        mm.checked_add(Num::mm(1.0)),
+        Err(crate::ConversionError::MixedDistance(
+            num_rational::Ratio::new(1, 2),
+            1.into()
+        ))
     );
 }

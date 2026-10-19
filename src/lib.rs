@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-use crate::dimension_count::DimensionCount;
+pub use crate::dimension_count::DimensionCount;
+use num_rational::Ratio;
 
 const MM_PER_INCH: f64 = 25.4;
 const INCH_PER_MM: f64 = 1.0 / MM_PER_INCH;
@@ -61,14 +62,12 @@ impl From<(AngleUnit, DimensionCount)> for DimensionAngle {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum ConversionError {
-    MixedDistance(i8, i8),
-    MixedAngle(i8, i8),
+    MixedDistance(Ratio<i64>, Ratio<i64>),
+    MixedAngle(Ratio<i64>, Ratio<i64>),
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub enum ArithmeticError {
-    DimensionalityMustBeInteger(i8, i8),
-}
+/// Square roots can represent every dimension exponent.
+pub type ArithmeticError = std::convert::Infallible;
 
 fn factor_for_distance(a_unit: DistanceUnit, b_unit: DistanceUnit) -> f64 {
     match (a_unit, b_unit) {
@@ -106,10 +105,10 @@ impl Dimension {
         let distance_factor = match (self.unit_distance, other.unit_distance) {
             (None, None) => 1.0,
             (None, Some(DimensionDistance { unit: _, count })) => {
-                return Err(ConversionError::MixedDistance(0, count.into()));
+                return Err(ConversionError::MixedDistance(0.into(), count.into()));
             }
             (Some(DimensionDistance { unit: _, count }), None) => {
-                return Err(ConversionError::MixedDistance(count.into(), 0));
+                return Err(ConversionError::MixedDistance(count.into(), 0.into()));
             }
             (
                 Some(DimensionDistance {
@@ -127,16 +126,16 @@ impl Dimension {
                         b_count.into(),
                     ));
                 }
-                factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
+                factor_for_distance(a_unit, b_unit).powf(f64::from(b_count))
             }
         };
         let angle_factor = match (self.unit_angle, other.unit_angle) {
             (None, None) => 1.0,
             (None, Some(DimensionAngle { unit: _, count })) => {
-                return Err(ConversionError::MixedAngle(0, count.into()));
+                return Err(ConversionError::MixedAngle(0.into(), count.into()));
             }
             (Some(DimensionAngle { unit: _, count }), None) => {
-                return Err(ConversionError::MixedAngle(count.into(), 0));
+                return Err(ConversionError::MixedAngle(count.into(), 0.into()));
             }
             (
                 Some(DimensionAngle {
@@ -151,7 +150,7 @@ impl Dimension {
                 if a_count != b_count {
                     return Err(ConversionError::MixedAngle(a_count.into(), b_count.into()));
                 }
-                factor_for_angle(a_unit, b_unit).powi(i32::from(i8::from(b_count)))
+                factor_for_angle(a_unit, b_unit).powf(f64::from(b_count))
             }
         };
 
@@ -221,43 +220,21 @@ impl Dimensional {
         product
     }
 
-    pub fn sqrt(self) -> Result<Self, ArithmeticError> {
-        /// Ensures that 'x' is even before halving it.
-        fn checked_half(x: i8) -> Result<i8, ArithmeticError> {
-            if x % 2 == 0 {
-                Ok(x / 2)
-            } else {
-                Err(ArithmeticError::DimensionalityMustBeInteger(x, 2))
-            }
-        }
-
+    pub fn sqrt(self) -> Self {
         let units = Dimension {
-            unit_distance: if let Some(DimensionDistance { unit, count }) = self.units.unit_distance
-            {
-                let dim = checked_half(count.into())?;
-                if let Ok(count) = DimensionCount::try_from(dim) {
-                    Some(DimensionDistance { unit, count })
-                } else {
-                    None
-                }
-            } else {
-                None
-            },
-            unit_angle: if let Some(DimensionAngle { unit, count }) = self.units.unit_angle {
-                let dim = checked_half(count.into())?;
-                if let Ok(count) = DimensionCount::try_from(dim) {
-                    Some(DimensionAngle { unit, count })
-                } else {
-                    None
-                }
-            } else {
-                None
-            },
+            unit_distance: self.units.unit_distance.map(|d| DimensionDistance {
+                unit: d.unit,
+                count: d.count.half(),
+            }),
+            unit_angle: self.units.unit_angle.map(|d| DimensionAngle {
+                unit: d.unit,
+                count: d.count.half(),
+            }),
         };
-        Ok(Self {
+        Self {
             n: self.n.sqrt(),
             units,
-        })
+        }
     }
 
     /// If sign is negative, make the sign positive.
@@ -338,14 +315,11 @@ impl std::ops::Mul for Dimensional {
                     count: b_count,
                 }),
             ) => {
-                conversion_factor *=
-                    factor_for_distance(a_unit, b_unit).powi(i32::from(i8::from(b_count)));
-                DimensionCount::try_from(i8::from(a_count) + i8::from(b_count))
-                    .ok()
-                    .map(|sum| DimensionDistance {
-                        unit: a_unit,
-                        count: sum,
-                    })
+                conversion_factor *= factor_for_distance(a_unit, b_unit).powf(f64::from(b_count));
+                a_count.sum(b_count).map(|sum| DimensionDistance {
+                    unit: a_unit,
+                    count: sum,
+                })
             }
         };
 
@@ -354,14 +328,11 @@ impl std::ops::Mul for Dimensional {
             (None, Some(a)) => Some(a),
             (Some(a), None) => Some(a),
             (Some(a), Some(b)) => {
-                conversion_factor *=
-                    factor_for_angle(a.unit, b.unit).powi(i32::from(i8::from(b.count)));
-                DimensionCount::try_from(i8::from(a.count) + i8::from(b.count))
-                    .ok()
-                    .map(|sum| DimensionAngle {
-                        unit: a.unit,
-                        count: sum,
-                    })
+                conversion_factor *= factor_for_angle(a.unit, b.unit).powf(f64::from(b.count));
+                a.count.sum(b.count).map(|sum| DimensionAngle {
+                    unit: a.unit,
+                    count: sum,
+                })
             }
         };
 
@@ -388,8 +359,14 @@ mod unit_tests {
         let b = Dimensional::mm(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedDistance(0.into(), 1.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedDistance(1.into(), 0.into()))
+        );
     }
 
     #[test]
@@ -398,8 +375,14 @@ mod unit_tests {
         let b = Dimensional::degrees(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(0, 1)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedAngle(1, 0)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedAngle(0.into(), 1.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedAngle(1.into(), 0.into()))
+        );
     }
 
     #[test]
@@ -408,8 +391,14 @@ mod unit_tests {
         let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedDistance(0.into(), 1.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedDistance(1.into(), 0.into()))
+        );
     }
 
     #[test]
@@ -418,8 +407,14 @@ mod unit_tests {
         let b = Dimensional::mm(0.0);
         assert_ne!(a, b);
         assert_ne!(b, a);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(0, 1)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(1, 0)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedDistance(0.into(), 1.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedDistance(1.into(), 0.into()))
+        );
     }
 
     #[test]
@@ -477,14 +472,26 @@ mod unit_tests {
     fn compound_units_require_both_dimensions() {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
         let b = Dimensional::mm(1.0);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 0)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedAngle(0, 1)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedAngle(1.into(), 0.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedAngle(0.into(), 1.into()))
+        );
         assert_ne!(a, b);
         assert_ne!(b, a);
 
         let b = Dimensional::degrees(1.0);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 0)));
-        assert_eq!(b.checked_add(a), Err(ConversionError::MixedDistance(0, 1)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedDistance(1.into(), 0.into()))
+        );
+        assert_eq!(
+            b.checked_add(a),
+            Err(ConversionError::MixedDistance(0.into(), 1.into()))
+        );
         assert_ne!(a, b);
         assert_ne!(b, a);
     }
@@ -493,10 +500,16 @@ mod unit_tests {
     fn compound_units_require_matching_exponents() {
         let a = Dimensional::mm(1.0) * Dimensional::degrees(1.0);
         let b = Dimensional::mm(1.0).powi(2) * Dimensional::degrees(1.0);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedDistance(1, 2)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedDistance(1.into(), 2.into()))
+        );
 
         let b = Dimensional::mm(1.0) * Dimensional::degrees(1.0).powi(2);
-        assert_eq!(a.checked_add(b), Err(ConversionError::MixedAngle(1, 2)));
+        assert_eq!(
+            a.checked_add(b),
+            Err(ConversionError::MixedAngle(1.into(), 2.into()))
+        );
     }
 
     #[test]
@@ -509,6 +522,6 @@ mod unit_tests {
     #[test]
     fn sqrt_is_inverse_of_square() {
         let a = Dimensional::degrees(30.0);
-        assert_eq!(a, a.powi(2).sqrt().unwrap());
+        assert_eq!(a, a.powi(2).sqrt());
     }
 }
