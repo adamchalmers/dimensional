@@ -96,6 +96,23 @@ impl std::fmt::Display for ArithmeticError {
     }
 }
 
+impl std::fmt::Debug for Dimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match (self.unit_distance, self.unit_angle) {
+            (Some(dist), Some(ang)) => write!(f, "{dist:?}-{ang:?}"),
+            (Some(dist), None) => write!(f, "{dist:?}"),
+            (None, Some(ang)) => write!(f, "{ang:?}"),
+            (None, None) => write!(f, "_"),
+        }
+    }
+}
+
+impl std::fmt::Debug for Dimensional {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} {}>", self.n, self.units)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Num;
