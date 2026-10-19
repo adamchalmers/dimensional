@@ -1,7 +1,8 @@
 use std::assert_matches;
 
 use crate::{
-    AngleUnit, Dimension, DimensionAngle, DimensionCount, DimensionDistance, DistanceUnit, Num,
+    AngleUnit, Dimension, DimensionAngle, DimensionDistance, DistanceUnit, Num,
+    dimension_count::DimensionCount,
 };
 use proptest::prelude::*;
 
@@ -73,49 +74,101 @@ proptest! {
     }
 
     #[test]
-    fn adding_compatible_numbers(n: Num) {
-        let x0 = n.checked_add(n);
-        // This should succeed because n+n never mixes incompatible units.
-        let _x0 = x0.unwrap();
+    fn adding_two_distances_always_succeeds(a in -BIG..BIG, b in -BIG..BIG, mut ua: DistanceUnit, ub: DistanceUnit, count: DimensionCount) {
+        // Make two distances.
+        let dist0 = Num{
+            n: a,
+            units: Dimension{
+                unit_distance: Some(DimensionDistance { unit: ua, count }),
+                unit_angle: None,
+            },
+        };
+        let dist1 = Num{
+            n: b,
+            units: Dimension{
+                unit_distance: Some(DimensionDistance { unit: ub, count }),
+                unit_angle: None,
+            },
+        };
+
+        // Both are distances so this should always succeed
+        (dist0.checked_add(dist1)).unwrap();
+    }
+
+    #[test]
+    fn adding_two_angles_always_succeeds(a in -BIG..BIG, b in -BIG..BIG, mut ua: AngleUnit, ub: AngleUnit, count: DimensionCount) {
+        // Make two angles.
+        let dist0 = Num{
+            n: a,
+            units: Dimension{
+                unit_angle: Some(DimensionAngle { unit: ua, count }),
+                unit_distance: None,
+            },
+        };
+        let dist1 = Num{
+            n: b,
+            units: Dimension{
+                unit_angle: Some(DimensionAngle { unit: ub, count }),
+                unit_distance: None,
+            },
+        };
+
+        // Both are angles so this should always succeed
+        (dist0.checked_add(dist1)).unwrap();
+    }
+
+    #[test]
+    fn adding_two_unitless_always_succeeds(a in -BIG..BIG, b in -BIG..BIG) {
+        // Make two unitless numbers.
+        let dist0 = Num{
+            n: a,
+            units: Dimension::unitless(),
+        };
+        let dist1 = Num{
+            n: b,
+            units: Dimension::unitless(),
+        };
+
+        // Both are unitless numbers so this should always succeed
+        (dist0.checked_add(dist1)).unwrap();
     }
 
     #[test]
     fn adding_incompatible_numbers(a in -BIG..BIG, b in -BIG..BIG, ua: DimensionAngle, ub: DimensionDistance) {
-        let angle = Num{n: a, units: Dimension{unit_angle: Some(ua), unit_distance: None}};
-        let distance = Num{n: b, units: Dimension{unit_angle: None, unit_distance: Some(ub)}};
+        let    angle = Num{n: a, units: Dimension{unit_angle: Some(ua), unit_distance:     None}};
+        let distance = Num{n: b, units: Dimension{unit_angle:     None, unit_distance: Some(ub)}};
 
         // Adding an angle and distance should never succeed.
         assert_matches!(angle.checked_add(distance), Err(crate::ConversionError::MixedDistance(_, _)));
+        assert_matches!(distance.checked_add(angle), Err(crate::ConversionError::MixedDistance(_, _)));
     }
 
     #[test]
     fn scaling_is_multiplication(n: Num) {
+        // For any n, 2*n == n+n
         assert_eq!(n + n, Num::unitless(2.0) * n);
     }
 
     #[test]
     fn multiplicative_identity(n: Num) {
+        // For any n, 1*n == n
         assert_eq!(n, n * Num::unitless(1.0));
     }
 
     #[test]
     fn division_identity(n: Num) {
+        // For any n, n/1 == n
         assert_eq!(n, n / Num::unitless(1.0));
     }
 
     #[test]
     fn sqrt_is_inverse_of_square(
-        a in -BIG..BIG,
-        u_dist: Option<DistanceUnit>,
-        u_ang: Option<AngleUnit>,
-        n_dist: DimensionCount,
-        n_ang: DimensionCount,
+        n in -BIG..BIG,
+        units: Dimension,
     ) {
-        let units = Dimension {
-            unit_distance: u_dist.map(|u| (u, n_dist).into()),
-            unit_angle: u_ang.map(|u| (u, n_ang).into()),
-        };
-        let n = Num{n: a, units};
+        let n = Num{n, units};
+
+        // For all n, the sqrt(n^2) == |n|
         assert_eq!(n.powi(2).sqrt().unwrap(), n.abs());
 
     }

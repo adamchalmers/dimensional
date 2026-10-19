@@ -106,6 +106,14 @@ fn factor_for_angle(a_unit: AngleUnit, b_unit: AngleUnit) -> f64 {
 }
 
 impl Dimension {
+    /// A unitless quantity (e.g. counts or frequencies)
+    pub fn unitless() -> Self {
+        Self {
+            unit_distance: None,
+            unit_angle: None,
+        }
+    }
+
     /// If the units are comensurable, returns a conversion factor to convert
     /// `other` into the units of `self`.
     /// e.g. cm and inches are convertible, with a factor of 25.4
