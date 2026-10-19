@@ -26,12 +26,6 @@ pub struct Dimensional {
     units: Dimension,
 }
 
-impl std::fmt::Debug for Dimensional {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<{} {}>", self.n, self.units)
-    }
-}
-
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Dimension {
@@ -62,17 +56,6 @@ pub struct DimensionAngle {
 impl From<(AngleUnit, DimensionCount)> for DimensionAngle {
     fn from((unit, count): (AngleUnit, DimensionCount)) -> Self {
         Self { unit, count }
-    }
-}
-
-impl std::fmt::Debug for Dimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match (self.unit_distance, self.unit_angle) {
-            (Some(dist), Some(ang)) => write!(f, "{dist:?}-{ang:?}"),
-            (Some(dist), None) => write!(f, "{dist:?}"),
-            (None, Some(ang)) => write!(f, "{ang:?}"),
-            (None, None) => write!(f, "_"),
-        }
     }
 }
 
