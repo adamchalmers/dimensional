@@ -1,6 +1,6 @@
 use crate::{
-    AngleUnit, ArithmeticError, Dimension, DimensionAngle, DimensionDistance, Dimensional,
-    DistanceUnit, constructors::ONE,
+    AngleUnit, Dimension, DimensionAngle, DimensionDistance, Dimensional, DistanceUnit,
+    constructors::ONE,
 };
 
 impl std::fmt::Display for Dimensional {
@@ -26,7 +26,7 @@ impl std::fmt::Display for Dimension {
             if n == ONE {
                 Some(format!("{unit}"))
             } else {
-                Some(format!("{unit}{}", superscript(n.into())))
+                Some(format!("{unit}{}", superscript(&n.to_string())))
             }
         } else {
             None
@@ -35,7 +35,7 @@ impl std::fmt::Display for Dimension {
             if n == ONE {
                 Some(format!("{unit}"))
             } else {
-                Some(format!("{unit}{}", superscript(n.into())))
+                Some(format!("{unit}{}", superscript(&n.to_string())))
             }
         } else {
             None
@@ -71,29 +71,24 @@ impl std::fmt::Display for AngleUnit {
 
 /// Formats the number in unicode string superscript style.
 /// e.g. 20 becomes "²⁰".
-fn superscript(n: i8) -> String {
-    const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
-
-    let neg = n < 0;
-
-    let out = n
-        .abs()
-        .to_string()
-        .chars()
-        .map(|c| DIGITS[c.to_digit(10).unwrap() as usize])
-        .collect();
-    if neg { format!("⁻{out}") } else { out }
-}
-
-impl std::fmt::Display for ArithmeticError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ArithmeticError::DimensionalityMustBeInteger(base, divisor) => write!(
-                f,
-                "Error: Cannot divide the dimensionality {base} by {divisor} because dimensionality must be an integer. For example, you cannot take the square root of a volume, because we cannot represent cm^1.5, only cm, cm^2 and cm^3."
-            ),
-        }
-    }
+fn superscript(n: &str) -> String {
+    n.chars()
+        .map(|c| match c {
+            '0' => '⁰',
+            '1' => '¹',
+            '2' => '²',
+            '3' => '³',
+            '4' => '⁴',
+            '5' => '⁵',
+            '6' => '⁶',
+            '7' => '⁷',
+            '8' => '⁸',
+            '9' => '⁹',
+            '-' => '⁻',
+            '/' => '⁄',
+            _ => unreachable!("rational exponent"),
+        })
+        .collect()
 }
 
 impl std::fmt::Debug for Dimension {

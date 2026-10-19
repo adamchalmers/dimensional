@@ -31,7 +31,7 @@ assert_eq!(
 // gives you an error.
 assert_eq!(
     Num::mm(10.0).checked_add(Num::radians(2.0)),
-    Err(ConversionError::MixedDistance(1, 0))
+    Err(ConversionError::MixedDistance(1.into(), 0.into()))
 );
 
 // You can scale lengths or angles by unitless quantities.

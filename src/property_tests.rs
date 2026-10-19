@@ -169,8 +169,18 @@ proptest! {
         let n = Num{n, units};
 
         // For all n, the sqrt(n^2) == |n|
-        assert_eq!(n.powi(2).sqrt().unwrap(), n.abs());
+        assert_eq!(n.powi(2).sqrt(), n.abs());
+    }
 
+    #[test]
+    fn square_is_inverse_of_sqrt(
+        n in -BIG..BIG,
+        units: Dimension,
+    ) {
+        let n = Num{n, units};
+
+        // For all n, the sqrt(n)^2 == |n|
+        assert_nearly_eq(n.abs().sqrt().powi(2), n.abs(), 0.0001);
     }
 }
 
